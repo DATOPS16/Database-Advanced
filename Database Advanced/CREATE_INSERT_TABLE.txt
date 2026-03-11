@@ -1,0 +1,2743 @@
+CREATE TABLE Member (
+    MemberID VARCHAR2(5) NOT NULL PRIMARY KEY,
+    Name VARCHAR2(100) NOT NULL,
+    MemberIC VARCHAR2(15) NOT NULL,
+    MemberType VARCHAR2(10) NOT NULL CHECK (MemberType IN ('Standard','Premium')),
+    PhoneNumber VARCHAR2(20) ,
+    Address VARCHAR2(255),
+    RegisterDate DATE NOT NULL,
+    ExpiryDate DATE NOT NULL,
+    Status VARCHAR2(20) NOT NULL CHECK (Status IN ('Active', 'Expired','Blacklisted')),
+    BlackListDate DATE
+);
+
+CREATE TABLE Book (
+    BookID VARCHAR2(5) NOT NULL PRIMARY KEY,
+    Status VARCHAR2(20) NOT NULL CHECK (Status IN ('Available', 'Reserved')),
+    BorrowedCount NUMBER,
+    Remark VARCHAR2(255)
+);
+
+CREATE TABLE BookTitle (
+    BookID VARCHAR2(5) NOT NULL PRIMARY KEY,
+    Title VARCHAR2(255) NOT NULL,
+    Author VARCHAR2(100) NOT NULL,
+    PublishedYear NUMBER (4) NOT NULL,
+    Category VARCHAR2(50) NOT NULL CHECK (Category IN ('Fiction', 'Comic', 'Mystery','Science','Fantasy')),  
+    FOREIGN KEY (BookID) REFERENCES Book(BookID)
+);
+
+CREATE TABLE Librarian (
+    LibrarianID VARCHAR2(5) NOT NULL PRIMARY KEY,
+    Name VARCHAR2(100) NOT NULL,
+    LibrarianIC VARCHAR2(15) NOT NULL,
+    PhoneNumber VARCHAR2(20),
+    Address VARCHAR2(255),
+    Status VARCHAR(15) NOT NULL CHECK (Status IN ('Duty','Leave')),
+    Salary NUMBER NOT NULL,
+    LibrarianType VARCHAR2(15) NOT NULL CHECK (LibrarianType  IN ('FullTime','PartTime'))
+);
+
+CREATE TABLE BookReservation (
+    BookReserveID VARCHAR2(5) NOT NULL PRIMARY KEY,
+    MemberID VARCHAR2(5) NOT NULL,
+    BookID VARCHAR2(5) NOT NULL,
+    ReservationDate DATE DEFAULT SYSDATE NOT NULL,
+    Status VARCHAR2(20) NOT NULL CHECK (Status IN ('Placed', 'Ready', 'Fulfilled','Cancelled')),
+    FOREIGN KEY (MemberID) REFERENCES Member(MemberID),
+    FOREIGN KEY (BookID) REFERENCES Book(BookID)
+);
+
+CREATE TABLE LibraryResource (
+    ResourceID VARCHAR2(5) NOT NULL PRIMARY KEY,
+    ResourceName VARCHAR2(100) NOT NULL UNIQUE,
+    ResourceType VARCHAR2(20) NOT NULL CHECK (ResourceType IN ('Facility', 'Equipment')),
+    Location VARCHAR2(255), -- Only applicable for facilities
+    LibraryResourceStatus VARCHAR2(20) NOT NULL CHECK (LibraryResourceStatus IN ('Available', 'Under Maintenance', 'Closed'))
+);
+
+CREATE TABLE FacilityReservation (
+    FacilityReserveID VARCHAR2(5) NOT NULL PRIMARY KEY,
+    MemberID VARCHAR2(5) NOT NULL,
+    ResourceID VARCHAR2(5) NOT NULL,
+    ReservationDate DATE DEFAULT SYSDATE NOT NULL,
+    ReservationStatus VARCHAR2(20) NOT NULL CHECK (ReservationStatus IN ('Ready','Cancelled')),
+    FOREIGN KEY (MemberID) REFERENCES Member(MemberID),
+    FOREIGN KEY (ResourceID) REFERENCES LibraryResource(ResourceID)
+    );
+
+CREATE TABLE Billing (
+    BillingID VARCHAR2(5) NOT NULL PRIMARY KEY,
+    MemberID VARCHAR2(5) NOT NULL,
+    Type VARCHAR2(20) NOT NULL CHECK (Type IN ('overdue' , 'RenewMember', 'RegisterMember')),
+    Amount NUMBER(10,2) NOT NULL,
+    DueDate DATE NOT NULL,
+    PayStatus VARCHAR2(20) NOT NULL CHECK (PayStatus  IN ('Paid', 'Unpaid',’Overdue’)),
+    FOREIGN KEY (MemberID) REFERENCES Member(MemberID)
+);
+
+CREATE TABLE Invoice (
+    InvoiceID VARCHAR2(5) NOT NULL PRIMARY KEY,
+    PaymentDate DATE,
+    PaymentMethod VARCHAR2(20) NOT NULL CHECK (PaymentMethod IN ('Cash' , 'Online Banking', 'e-wallet')),
+    BillingID VARCHAR2(5) NOT NULL,
+    FOREIGN KEY (BillingID) REFERENCES Billing(BillingID)
+);
+
+CREATE TABLE Technician (
+    TechnicianID VARCHAR2(5) NOT NULL PRIMARY KEY,
+    Name VARCHAR2(100) NOT NULL,
+    Email VARCHAR2(100) UNIQUE,
+    PhoneNumber VARCHAR2(20),
+    Specialty VARCHAR2(30) NOT NULL CHECK (Specialty IN ('Equipment Repair','Facilities Administration'))
+);
+
+CREATE TABLE MaintenanceRequest (
+    RequestID VARCHAR2(5) NOT NULL PRIMARY KEY,
+    TechnicianID VARCHAR2(5) NOT NULL,
+    ResourceID VARCHAR2(5) NOT NULL,
+    LibrarianID VARCHAR2(5) NOT NULL,
+    RequestDate DATE NOT NULL,
+    Status VARCHAR2(20) NOT NULL CHECK (Status IN ('Pending', 'In Progress', 'Completed')),
+    FOREIGN KEY (TechnicianID) REFERENCES Technician(TechnicianID),
+    FOREIGN KEY (ResourceID) REFERENCES LibraryResource(ResourceID),
+    FOREIGN KEY (LibrarianID) REFERENCES Librarian(LibrarianID)
+);
+
+CREATE TABLE BorrowingRecord (
+    RecordID VARCHAR2(5) NOT NULL PRIMARY KEY,
+    MemberID VARCHAR2(5) NOT NULL,
+    LibrarianID VARCHAR2(5) NOT NULL,
+    BookID VARCHAR2(5) NOT NULL,
+    BorrowDate DATE NOT NULL,
+    DueDate DATE NOT NULL,
+    ReturnDate DATE,
+    Status VARCHAR2(20) NOT NULL CHECK (Status IN ('Borrowed', 'Returned', 'Overdue')),
+    ExtensionLoan VARCHAR2(3) NOT NULL CHECK (ExtensionLoan IN ('Yes', 'No')),
+    FOREIGN KEY (MemberID) REFERENCES Member(MemberID),
+    FOREIGN KEY (LibrarianID) REFERENCES Librarian(LibrarianID),
+    FOREIGN KEY (BookID) REFERENCES Book(BookID)
+);
+
+ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD';
+
+INSERT INTO Member VALUES ('M001', 'John Tan', '990101145321', 'Standard', '60123456789', '12, Jalan Setia 3, Taman Setia, 40100 Shah Alam, Selangor', '2024-11-01', '2025-11-01', 'Active', NULL);
+INSERT INTO Member VALUES ('M002', 'Alicia Wong', '880505085432', 'Premium', '60175567890', '45, Lorong Mawar 2, Taman Mawar, 11600 Jelutong, Pulau Pinang', '2023-05-10', '2024-05-10', 'Expired', NULL);
+INSERT INTO Member VALUES ('M003', 'Mohd Faiz', '950203105678', 'Standard', '60132233445', '18, Jalan Harmoni, Taman Desa, 81200 Johor Bahru, Johor', '2024-08-20', '2025-08-20', 'Active', NULL);
+INSERT INTO Member VALUES ('M004', 'Siti Aminah', '920716086543', 'Premium', '60169876543', '3A, Jalan Ria 5, Taman Ria, 08000 Sungai Petani, Kedah', '2023-07-15', '2024-07-15', 'Blacklisted', '2024-07-01');
+INSERT INTO Member VALUES ('M005', 'Kevin Lim', '910430075432', 'Standard', '60147654321', '67, Jalan Merdeka, Kampung Baru, 50300 Kuala Lumpur', '2021-03-30', '2022-03-30', 'Expired', NULL);
+INSERT INTO Member VALUES ('M006', 'Nurul Huda', '001010086789', 'Premium', '60183334567', '9, Jalan Bukit, Taman Bukit Indah, 68000 Ampang, Selangor', '2023-10-10', '2024-10-10', 'Active', NULL);
+INSERT INTO Member VALUES ('M007', 'Adam Lee', '970205115432', 'Standard', '60198765432', '28, Jalan Melur, Taman Melur, 75200 Melaka', '2024-12-05', '2025-12-05', 'Active', NULL);
+INSERT INTO Member VALUES ('M008', 'Tan Mei Ling', '890115045678', 'Premium', '60123334455', '112, Jalan Tun Razak, 50400 Kuala Lumpur', '2023-01-15', '2024-01-15', 'Blacklisted', '2024-01-01');
+INSERT INTO Member VALUES ('M009', 'Amirul Hakim', '851110025432', 'Standard', '60171122334', '10, Jalan Kempas, Taman Kempas, 70400 Seremban, Negeri Sembilan', '2024-11-10', '2025-11-10', 'Expired', NULL);
+INSERT INTO Member VALUES ('M010', 'Chong Wei', '900410096543', 'Premium', '60135566778', '99, Jalan Pelangi, Taman Pelangi, 43000 Kajang, Selangor', '2023-04-10', '2024-04-10', 'Expired', NULL);
+INSERT INTO Member VALUES ('M011', 'Liyana Zahari', '981225075678', 'Standard', '60181234567', '51, Jalan Damai, Taman Damai, 21000 Kuala Terengganu, Terengganu', '2023-06-25', '2024-06-25', 'Expired', NULL);
+INSERT INTO Member VALUES ('M012', 'Harith Daniel', '941215105321', 'Premium', '60147654321', '70, Jalan Putra, Bandar Putra, 08000 Sungai Petani, Kedah', '2024-12-15', '2025-12-15', 'Active', NULL);
+INSERT INTO Member VALUES ('M013', 'Kavitha Raj', '930722025432', 'Standard', '60139988776', '27, Jalan Bunga Raya, 93000 Kuching, Sarawak', '2024-07-22', '2025-07-22', 'Active', NULL);
+INSERT INTO Member VALUES ('M014', 'Zulkifli Hassan', '870915106789', 'Premium', '60165544332', '22, Jalan Sultan, Taman Sentosa, 86000 Kluang, Johor', '2022-09-15', '2023-09-15', 'Blacklisted', '2022-09-15');
+INSERT INTO Member VALUES ('M015', 'Ng Li Yan', '930310075678', 'Standard', '60156677889', '5, Jalan Kenari, Bandar Kinrara, 47100 Puchong, Selangor', '2023-03-10', '2024-03-10', 'Expired', NULL);
+INSERT INTO Member VALUES ('M016', 'Rayyan Ahmad', '000101115432', 'Premium', '60112345678', '38, Jalan Permai, Taman Permai, 26400 Bandar Jengka, Pahang', '2023-11-01', '2024-11-01', 'Expired', NULL);
+INSERT INTO Member VALUES ('M017', 'Wong Kar Wai', '880505105678', 'Standard', '60128765432', '88, Jalan Haji Ahmad, 25300 Kuantan, Pahang', '2022-05-05', '2023-05-05', 'Expired', NULL);
+INSERT INTO Member VALUES ('M018', 'Nur Aina', '870812045321', 'Premium', '60192233445', '11, Jalan Bendahara, 36000 Teluk Intan, Perak', '2021-08-12', '2022-08-12', 'Expired', NULL);
+INSERT INTO Member VALUES ('M019', 'Azlan Syah', '930220106789', 'Standard', '60175566443', '104, Jalan Taman Meru, 30020 Ipoh, Perak', '2024-10-20', '2025-10-20', 'Active', NULL);
+INSERT INTO Member VALUES ('M020', 'Goh Pei Wen', '881022085432', 'Premium', '60186655443', '3, Jalan Bintang, 98000 Miri, Sarawak', '2023-10-22', '2024-10-22', 'Blacklisted', '2023-10-20');
+INSERT INTO Member VALUES ('M021', 'Lim Kian Yong', '820405025432', 'Standard', '60129988776', '2, Jalan Putih, 24000 Kemaman, Terengganu', '2022-04-05', '2023-04-05', 'Expired', NULL);
+INSERT INTO Member VALUES ('M022', 'Sharifah Aina', '900112055432', 'Premium', '60193322110', '65, Jalan Damai Laut, 32000 Sitiawan, Perak', '2024-08-12', '2025-08-12', 'Active', NULL);
+INSERT INTO Member VALUES ('M023', 'Raj Kumar', '860905045678', 'Standard', '60184455667', '73, Jalan Tok Janggut, 17500 Tanah Merah, Kelantan', '2024-09-05', '2025-09-05', 'Active', NULL);
+INSERT INTO Member VALUES ('M024', 'Lim Xuan Jie', '920615095432', 'Premium', '60123344556', '36, Jalan Kenanga, 71450 Port Dickson, Negeri Sembilan', '2022-06-15', '2023-06-15', 'Expired', NULL);
+INSERT INTO Member VALUES ('M025', 'Aishah Kamal', '930305075432', 'Standard', '60142345678', '91, Jalan Delima, Taman Delima, 43200 Cheras, Selangor', '2023-06-08', '2024-06-08', 'Expired', NULL);
+INSERT INTO Member VALUES ('M026', 'Hafiz Rahman', '900718075432', 'Premium', '60199988775', '6, Jalan Ros, Taman Seri Ros, 28700 Bentong, Pahang', '2023-07-18', '2024-07-18', 'Blacklisted', '2024-07-15');
+INSERT INTO Member VALUES ('M027', 'Lee Zhen Yi', '870620096543', 'Standard', '60111234567', '29, Jalan Gajah, 16000 Tumpat, Kelantan', '2022-11-20', '2023-11-20', 'Expired', NULL);
+INSERT INTO Member VALUES ('M028', 'Nora Shahirah', '910207105678', 'Premium', '60128887776', '44, Jalan Aman, 90000 Sandakan, Sabah', '2023-02-07', '2024-02-07', 'Active', NULL);
+INSERT INTO Member VALUES ('M029', 'Thinesh Kumar', '810925025432', 'Standard', '60174321987', '19, Jalan Tun Mustapha, 87000 Labuan, Wilayah Persekutuan Labuan', '2021-09-25', '2022-09-25', 'Expired', NULL);
+INSERT INTO Member VALUES ('M030', 'Liew Mei Yin', '950801045678', 'Premium', '60135566774', '88, Jalan Lavender, Taman Lavender, 42100 Klang, Selangor', '2024-08-01', '2025-08-01','Active', NULL);
+
+INSERT INTO Book VALUES ('B001', 'Reserved', 10, 'Popular');
+INSERT INTO Book VALUES ('B002', 'Reserved', 10, 'Popular');
+INSERT INTO Book VALUES ('B003', 'Available', 3, NULL);
+INSERT INTO Book VALUES ('B004', 'Available', 2, NULL);
+INSERT INTO Book VALUES ('B005', 'Reserved', 1, NULL);
+INSERT INTO Book VALUES ('B006', 'Available', 4, NULL);
+INSERT INTO Book VALUES ('B007', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B008', 'Reserved', 20, 'Popular');
+INSERT INTO Book VALUES ('B009', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B010', 'Reserved', 3, NULL);
+INSERT INTO Book VALUES ('B011', 'Reserved', 1, NULL);
+INSERT INTO Book VALUES ('B012', 'Available', 4, NULL);
+INSERT INTO Book VALUES ('B013', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B014', 'Available', 3, NULL);
+INSERT INTO Book VALUES ('B015', 'Reserved', 1, NULL);
+INSERT INTO Book VALUES ('B016', 'Reserved', 4, NULL);
+INSERT INTO Book VALUES ('B017', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B018', 'Available', 3, NULL);
+INSERT INTO Book VALUES ('B019', 'Reserved', 20, 'Popular');
+INSERT INTO Book VALUES ('B020', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B021', 'Reserved', 1, NULL);
+INSERT INTO Book VALUES ('B022', 'Available', 2, NULL);
+INSERT INTO Book VALUES ('B023', 'Reserved', 1, NULL);
+INSERT INTO Book VALUES ('B024', 'Available', 2, NULL);
+INSERT INTO Book VALUES ('B025', 'Reserved', 3, NULL);
+INSERT INTO Book VALUES ('B026', 'Available', 2, NULL);
+INSERT INTO Book VALUES ('B027', 'Reserved', 1, NULL);
+INSERT INTO Book VALUES ('B028', 'Available', 2, NULL);
+INSERT INTO Book VALUES ('B029', 'Reserved', 3, NULL);
+INSERT INTO Book VALUES ('B030', 'Available', 2, NULL);
+INSERT INTO Book VALUES ('B031', 'Reserved', 1, NULL);
+INSERT INTO Book VALUES ('B032', 'Available', 2, NULL);
+INSERT INTO Book VALUES ('B033', 'Reserved', 1, NULL);
+INSERT INTO Book VALUES ('B034', 'Available', 2, NULL);
+INSERT INTO Book VALUES ('B035', 'Reserved', 1, NULL);
+INSERT INTO Book VALUES ('B036', 'Available', 4, NULL);
+INSERT INTO Book VALUES ('B037', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B038', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B039', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B040', 'Available', 2, NULL);
+INSERT INTO Book VALUES ('B041', 'Reserved', 1, NULL);
+INSERT INTO Book VALUES ('B042', 'Available', 2, NULL);
+INSERT INTO Book VALUES ('B043', 'Reserved', 1, NULL);
+INSERT INTO Book VALUES ('B044', 'Available', 2, NULL);
+INSERT INTO Book VALUES ('B045', 'Reserved', 1, NULL);
+INSERT INTO Book VALUES ('B046', 'Available', 2, NULL);
+INSERT INTO Book VALUES ('B047', 'Reserved', 1, NULL);
+INSERT INTO Book VALUES ('B048', 'Available', 3, NULL);
+INSERT INTO Book VALUES ('B049', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B050', 'Available', 3, NULL);
+INSERT INTO Book VALUES ('B051', 'Reserved', 1, NULL);
+INSERT INTO Book VALUES ('B052', 'Available', 2, NULL);
+INSERT INTO Book VALUES ('B053', 'Reserved', 3, NULL);
+INSERT INTO Book VALUES ('B054', 'Available', 2, NULL);
+INSERT INTO Book VALUES ('B055', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B056', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B057', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B058', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B059', 'Reserved', 3, NULL);
+INSERT INTO Book VALUES ('B060', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B061', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B062', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B063', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B064', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B065', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B066', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B067', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B068', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B069', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B070', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B071', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B072', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B073', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B074', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B075', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B076', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B077', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B078', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B079', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B080', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B081', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B082', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B083', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B084', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B085', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B086', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B087', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B088', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B089', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B090', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B091', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B092', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B093', 'Reserved', 2, NULL);
+INSERT INTO Book VALUES ('B094', 'Available', 1, NULL);
+INSERT INTO Book VALUES ('B095', 'Reserved', 20,'Popular');
+INSERT INTO Book VALUES ('B096', 'Available', 10, 'Popular');
+INSERT INTO Book VALUES ('B097', 'Reserved', 6, NULL);
+INSERT INTO Book VALUES ('B098', 'Available', 10, 'Popular');
+INSERT INTO Book VALUES ('B099', 'Reserved', 20, 'Popular');
+INSERT INTO Book VALUES ('B100', 'Available', 11, 'Popular');
+
+INSERT INTO BookTitle VALUES ('B001', 'The Lost Kingdom', 'Ahmad Faizal', 2012, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B002', 'Space Explorers', 'Lim Wei Seng', 2011, 'Science');
+INSERT INTO BookTitle VALUES ('B003', 'Mystery at Genting', 'Nurul Aina', 2011, 'Mystery');
+INSERT INTO BookTitle VALUES ('B004', 'Legends of Langkawi', 'Zulkifli Hasan', 2014, 'Fiction');
+INSERT INTO BookTitle VALUES ('B005', 'The Time Machine', 'Tan Mei Ling', 1999, 'Science');
+INSERT INTO BookTitle VALUES ('B006', 'Kampung Heroes', 'Amirul Rahman', 1998, 'Comic');
+INSERT INTO BookTitle VALUES ('B007', 'Dragon Scrolls', 'Liew Chun Wah', 1999, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B008', 'Detective from KL', 'Azimah Noor', 2000, 'Mystery');
+INSERT INTO BookTitle VALUES ('B009', 'Solar Invasion', 'Wong Kee Mun', 2013, 'Science');
+INSERT INTO BookTitle VALUES ('B010', 'The Jungle Book', 'Rahman Idris', 2012, 'Fiction');
+INSERT INTO BookTitle VALUES ('B011', 'Super Syafiq', 'Hafiz Jamal', 2015, 'Comic');
+INSERT INTO BookTitle VALUES ('B012', 'The Hidden Village', 'Aisyah Zain', 2000, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B013', 'Twin Detectives', 'Liyana Kamal', 2000, 'Mystery');
+INSERT INTO BookTitle VALUES ('B014', 'Future Malaysia', 'Shahrul Nizam', 2000, 'Science');
+INSERT INTO BookTitle VALUES ('B015', 'Borneo Tales', 'Farah Izzati', 2007, 'Fiction');
+INSERT INTO BookTitle VALUES ('B016', 'Kedai Runcit Comix', 'Nazri Omar', 2005, 'Comic');
+INSERT INTO BookTitle VALUES ('B017', 'The Crystal Cave', 'Raja Farid', 2004, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B018', 'Haunted Hostel', 'Fatin Sofia', 2009, 'Mystery');
+INSERT INTO BookTitle VALUES ('B019', 'Techno Lab', 'Kumar Arvind', 1999, 'Science');
+INSERT INTO BookTitle VALUES ('B020', 'Sunset Stories', 'Hannah Lee', 2001, 'Fiction');
+INSERT INTO BookTitle VALUES ('B021', 'Kampung Boy Returns', 'Lat', 2000, 'Comic');
+INSERT INTO BookTitle VALUES ('B022', 'Wizard of Penang', 'Khairul Anuar', 2004, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B023', 'Murder at Melaka', 'Aminah Said', 2004, 'Mystery');
+INSERT INTO BookTitle VALUES ('B024', 'Cyber Future', 'Zaid Zakaria', 2004, 'Science');
+INSERT INTO BookTitle VALUES ('B025', 'Tales of the River', 'Syafiq Yusof', 2006, 'Fiction');
+INSERT INTO BookTitle VALUES ('B026', 'Comics of the Straits', 'Ho Min Yi', 2010, 'Comic');
+INSERT INTO BookTitle VALUES ('B027', 'Guardians of Gaia', 'Roslan Aziz', 2001, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B028', 'Detective Squad', 'Nadia Jamil', 2000, 'Mystery');
+INSERT INTO BookTitle VALUES ('B029', 'Nano World', 'Haslina Omar', 2002, 'Science');
+INSERT INTO BookTitle VALUES ('B030', 'Island Dreams', 'Faizah Mokhtar', 2013, 'Fiction');
+INSERT INTO BookTitle VALUES ('B031', 'The Last Survivor', 'Farhan Ali', 2012, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B032', 'The Silent Forest', 'Fara Murni', 2000, 'Science');
+INSERT INTO BookTitle VALUES ('B033', 'Mystery in the Forest', 'Aminah Rahman', 2012, 'Mystery');
+INSERT INTO BookTitle VALUES ('B034', 'Echoes of the Past', 'Zaim Azlan', 2000, 'Fiction');
+INSERT INTO BookTitle VALUES ('B035', 'The Crystal Key', 'Rosnah Ismail', 2013, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B036', 'The Lost Paradise', 'Reza Dzulfiqar', 2013, 'Science');
+INSERT INTO BookTitle VALUES ('B037', 'Tales of the Haunted Mansion', 'Ayesha Rahim', 2013, 'Mystery');
+INSERT INTO BookTitle VALUES ('B038', 'The Fire of Hope', 'Jamaluddin Ali', 2014, 'Fiction');
+INSERT INTO BookTitle VALUES ('B039', 'Guardians of the Sky', 'Fauzan Razak', 2004, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B040', 'The Cyber Lab', 'Mokhtar Raza', 2000, 'Science');
+INSERT INTO BookTitle VALUES ('B041', 'The Detectives of the City', 'Lina Zulkifli', 2005, 'Mystery');
+INSERT INTO BookTitle VALUES ('B042', 'Shadows of the Past', 'Nadia Mustafa', 2000, 'Fiction');
+INSERT INTO BookTitle VALUES ('B043', 'The Witch\'s Tale', 'Khairul Azman', 2012, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B044', 'Space Bound', 'Mei Ling Chong', 2010, 'Science');
+INSERT INTO BookTitle VALUES ('B045', 'The Haunted Mansion', 'Zara Amin', 2010, 'Mystery');
+INSERT INTO BookTitle VALUES ('B046', 'The Time Traveler', 'Sharifah Maria', 1999, 'Fiction');
+INSERT INTO BookTitle VALUES ('B047', 'The Skyfall Chronicles', 'Tan Wei Ming', 2013, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B048', 'Fate of the Universe', 'Rizwan Zain', 2013, 'Science');
+INSERT INTO BookTitle VALUES ('B049', 'The Chronicles of the Sea', 'Aminah Najib', 2000, 'Fiction');
+INSERT INTO BookTitle VALUES ('B050', 'Witchcraft and Magic', 'Roslan Haris', 2001, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B051', 'Secret Agents of the City', 'Fadilah Nizam', 2002, 'Mystery');
+INSERT INTO BookTitle VALUES ('B052', 'Beyond the Stars', 'Siti Aisyah', 2003, 'Science');
+INSERT INTO BookTitle VALUES ('B053', 'The Labyrinth of Time', 'Fakhri Rahman', 2003, 'Fiction');
+INSERT INTO BookTitle VALUES ('B054', 'Worlds Beyond', 'Nor Hafizah', 2003, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B055', 'Fables from the Past', 'Mahmood Jamal', 2004, 'Fiction');
+INSERT INTO BookTitle VALUES ('B056', 'Into the Wild', 'Adira Kamal', 2005, 'Mystery');
+INSERT INTO BookTitle VALUES ('B057', 'The Moonstone Chronicles', 'Abdul Razak', 2010, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B058', 'Glimpse of the Future', 'Hafizah Ismail', 2000, 'Science');
+INSERT INTO BookTitle VALUES ('B059', 'Murder at Midnight', 'Hidayah Zulkifli', 2010, 'Mystery');
+INSERT INTO BookTitle VALUES ('B060', 'Dark Secrets of the Forest', 'Syamilah Omar', 2012, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B061', 'The Hidden World', 'Azlan Rahman', 2012, 'Science');
+INSERT INTO BookTitle VALUES ('B062', 'The Phantom Ship', 'Anis Ariffin', 2013, 'Fiction');
+INSERT INTO BookTitle VALUES ('B063', 'The Forgotten Kingdom', 'Khairul Saleh', 2010, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B064', 'Chronicles of the Ocean', 'Farina Ilyana', 2012, 'Science');
+INSERT INTO BookTitle VALUES ('B065', 'Detective vs. Monster', 'Zahra Nor', 2015, 'Mystery');
+INSERT INTO BookTitle VALUES ('B066', 'Journey to the Unknown', 'Amir Hamzah', 2000, 'Fiction');
+INSERT INTO BookTitle VALUES ('B067', 'Secrets of the Ice Kingdom', 'Rizwan Khalid', 2000, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B068', 'The Space Wars', 'Sarah Lee', 2006, 'Science');
+INSERT INTO BookTitle VALUES ('B069', 'City of Shadows', 'Zainal Abidin', 2008, 'Mystery');
+INSERT INTO BookTitle VALUES ('B070', 'The Dragon\'s Lair', 'Mariam Ismail', 2008, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B071', 'Witching Hour', 'Fatiha Latif', 2008, 'Fiction');
+INSERT INTO BookTitle VALUES ('B072', 'The Adventures of the Lost Prince', 'Rina Hassan', 2008, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B073', 'The Secret of the Ancient Ruins', 'Hussain Khalil', 2008, 'Science');
+INSERT INTO BookTitle VALUES ('B074', 'Murder in the Dark', 'Noor Zahirah', 2000, 'Mystery');
+INSERT INTO BookTitle VALUES ('B075', 'The Crystal Heart', 'Alya Afifah', 2015, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B076', 'Beyond the Horizon', 'Azlan Johari', 2006, 'Science');
+INSERT INTO BookTitle VALUES ('B077', 'The Haunted Castle', 'Siti Fatimah', 2000, 'Mystery');
+INSERT INTO BookTitle VALUES ('B078', 'The Time of Legends', 'Abdul Latif', 1999, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B079', 'Echoes of Eternity', 'Shaari Roslan', 2014, 'Fiction');
+INSERT INTO BookTitle VALUES ('B080', 'The Lost City of Gold', 'Sharifah Munirah', 2013, 'Science');
+INSERT INTO BookTitle VALUES ('B081', 'Quest for the Unknown', 'Aminah Zainal', 2013, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B082', 'The Labyrinth of Souls', 'Mariam Farhana', 2000, 'Mystery');
+INSERT INTO BookTitle VALUES ('B083', 'City of Forgotten Dreams', 'Azman Abdul', 2000, 'Fiction');
+INSERT INTO BookTitle VALUES ('B084', 'The Gatekeeper', 'Ruhani Omar', 2012, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B085', 'Shadows of the Storm', 'Nashitah Iskandar', 2022, 'Science');
+INSERT INTO BookTitle VALUES ('B086', 'The White Falcon', 'Nurul Ayuni', 2013, 'Mystery');
+INSERT INTO BookTitle VALUES ('B087', 'Return to the Jungle', 'Aiman Firdaus', 2001, 'Fiction');
+INSERT INTO BookTitle VALUES ('B088', 'Dragon\'s Wrath', 'Yusof Noor', 2003, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B089', 'The Dark Abyss', 'Zulfiqar Anwar', 2003, 'Science');
+INSERT INTO BookTitle VALUES ('B090', 'The Mystery of the Blue Sapphire', 'Faizah Idris', 2004, 'Mystery');
+INSERT INTO BookTitle VALUES ('B091', 'The Eternal Flame', 'Jamilah Siti', 2004, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B092', 'Secrets of the Ancient Temple', 'Ibrahim Malik', 2005, 'Science');
+INSERT INTO BookTitle VALUES ('B093', 'The Ghost of the Past', 'Mohammad Ariff', 2006, 'Mystery');
+INSERT INTO BookTitle VALUES ('B094', 'Legends of the Dark World', 'Syafiq Ibrahim', 2006, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B095', 'The Time Keepers', 'Haziq Yasin', 2005, 'Fiction');
+INSERT INTO BookTitle VALUES ('B096', 'Kingdom of Shadows', 'Rafidah Hassan', 2000, 'Science');
+INSERT INTO BookTitle VALUES ('B097', 'The Silent Night', 'Aida Safira', 2003, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B098', 'Into the Void', 'Zainah Yusuf', 2011, 'Mystery');
+INSERT INTO BookTitle VALUES ('B099', 'Guardians of the Lost World', 'Faris Fadli', 2012, 'Fantasy');
+INSERT INTO BookTitle VALUES ('B100', 'The Last of Us', 'Hassan Muthalib', 2010, 'Fiction');
+
+INSERT INTO Librarian VALUES ('L001', 'Ahmad Faiz', '860101100123', '60123456789', 'Jalan Tunku, Kuala Lumpur, 50450', 'Duty', 3500, 'FullTime');
+INSERT INTO Librarian VALUES ('L002', 'Siti Nurhaliza', '750908012345', '60123456780', 'No. 45, Jalan Sejahtera, Petaling Jaya, 46300', 'Leave', 2000, 'PartTime');
+INSERT INTO Librarian VALUES ('L003', 'Muhammad Ali', '840202110234', '60123456781', 'Jalan Malinja, Shah Alam, 40000', 'Duty', 4000, 'FullTime');
+INSERT INTO Librarian VALUES ('L004', 'Lim Wei Ting', '950305210456', '60123456782', 'No. 21, Jalan Timur, Georgetown, 10200', 'Duty', 2100, 'PartTime');
+INSERT INTO Librarian VALUES ('L005', 'Fazlina Aziz', '870607120567', '60123456783', 'No. 10, Jalan Sri Petaling, Kuala Lumpur, 57100', 'Leave', 3300, 'FullTime');
+INSERT INTO Librarian VALUES ('L006', 'Tan Chia Ling', '930811110678', '60123456784', 'No. 33, Jalan Pantai, Johor Bahru, 80000', 'Duty', 3600, 'FullTime');
+INSERT INTO Librarian VALUES ('L007', 'Kumar A/L Rajoo', '800423013789', '60123456785', 'No. 88, Jalan Bukit, Malacca, 75000', 'Leave', 3400, 'PartTime');
+INSERT INTO Librarian VALUES ('L008', 'Lee Mei Li', '900520023890', '60123456786', 'No. 55, Jalan Kuning, Ipoh, 31400', 'Duty', 3200, 'FullTime');
+INSERT INTO Librarian VALUES ('L009', 'Jamilah Hasan', '860507103901', '60123456787', 'No. 17, Jalan Maju, Batu Pahat, 83000', 'Leave', 1900, 'PartTime');
+INSERT INTO Librarian VALUES ('L010', 'Ahmad Zaki', '920701140012', '60123456788', 'No. 100, Jalan Kemuning, Kuching, 93100', 'Duty', 3700, 'FullTime');
+INSERT INTO Librarian VALUES ('L011', 'Nora Iman', '010110040123', '60123456789', 'No. 7, Jalan Bukit Bintang, Kuala Lumpur, 55100', 'Duty', 3800, 'FullTime');
+INSERT INTO Librarian VALUES ('L012', 'Yusuf Hadi', '020802120234', '60123456780', 'No. 24, Jalan Subang, Petaling Jaya, 46000', 'Leave', 2200, 'PartTime');
+INSERT INTO Librarian VALUES ('L013', 'Sarah Mohamed', '850305110345', '60123456781', 'No. 15, Jalan Permatang, Sungai Petani, 08000', 'Duty', 3400, 'FullTime');
+INSERT INTO Librarian VALUES ('L014', 'Jamilah Khadijah', '900406110456', '60123456782', 'No. 55, Jalan Tambun, Ipoh, 31400', 'Duty', 2000, 'PartTime');
+INSERT INTO Librarian VALUES ('L015', 'Ravi Kumar', '930503120567', '60123456783', 'No. 11, Jalan Sri Hartamas, Kuala Lumpur, 50480', 'Leave', 3300, 'FullTime');
+INSERT INTO Librarian VALUES ('L016', 'Hafizul Bakri', '890709130678', '60123456784', 'No. 88, Jalan Kuala Kangsar, Taiping, 34000', 'Duty', 2000, 'PartTime');
+INSERT INTO Librarian VALUES ('L017', 'Noraini Ibrahim', '900515140789', '60123456785', 'No. 33, Jalan Petaling, Kuala Lumpur, 50100', 'Leave', 3100, 'FullTime');
+INSERT INTO Librarian VALUES ('L018', 'Rashidah Baharuddin', '870323130890', '60123456786', 'No. 17, Jalan Kencana, Alor Setar, 05100', 'Duty', 3000, 'FullTime');
+INSERT INTO Librarian VALUES ('L019', 'Tan Sin Yew', '890415140901', '60123456787', 'No. 10, Jalan Anggerik, Melaka, 75000', 'Leave', 1500, 'PartTime');
+INSERT INTO Librarian VALUES ('L020', 'Roslan Aziz', '860202150012', '60123456788', 'No. 27, Jalan Masjid, Miri, 98000', 'Duty', 3500, 'FullTime');
+INSERT INTO Librarian VALUES ('L021', 'Rina Nazri', '780613160234', '60123456789', 'No. 9, Jalan Bintang, Kota Kinabalu, 88000', 'Leave', 1500, 'PartTime');
+INSERT INTO Librarian VALUES ('L022', 'Kamaluddin Salleh', '750802170345', '60123456780', 'No. 62, Jalan Cheras, Kajang, 43000', 'Duty', 3600, 'FullTime');
+INSERT INTO Librarian VALUES ('L023', 'Fiza Hasim', '860610190456', '60123456781', 'No. 54, Jalan Bahagia, Shah Alam, 40000', 'Leave', 1500, 'PartTime');
+INSERT INTO Librarian VALUES ('L024', 'Faridah Zaki', '900705190567', '60123456782', 'No. 70, Jalan Sungai, Subang Jaya, 47500', 'Duty', 3300, 'FullTime');
+INSERT INTO Librarian VALUES ('L025', 'Mohamed Abdullah', '870512200678', '60123456783', 'No. 43, Jalan Meru, Klang, 41000', 'Leave', 1500, 'PartTime');
+INSERT INTO Librarian VALUES ('L026', 'Siti Azlina', '950212210789', '60123456784', 'No. 35, Jalan Rimba, Kuala Terengganu, 20000', 'Duty', 3000, 'FullTime');
+INSERT INTO Librarian VALUES ('L027', 'Aminah Fariz', '900309220890', '60123456785', 'No. 22, Jalan Dato, Kuantan, 25000', 'Leave', 1800, 'PartTime');
+INSERT INTO Librarian VALUES ('L028', 'Salina Ibrahim', '870808240901', '60123456786', 'No. 51, Jalan Sentral, Seremban, 70100', 'Duty', 3500, 'FullTime');
+INSERT INTO Librarian VALUES ('L029', 'Faizal Yusof', '800412250012', '60123456787', 'No. 40, Jalan Sejati, Kota Bharu, 15000', 'Leave', 2000, 'PartTime');
+INSERT INTO Librarian VALUES ('L030', 'Zulhidayat Zainal', '950507260123', '60123456788', 'No. 60, Jalan Pahlawan, Batu Gajah, 31000', 'Duty', 3300, 'FullTime');
+
+INSERT INTO Technician VALUES ('T001', 'Alex Wong', 'alex.wong@example.com', '60123223111', 'Equipment Repair');
+INSERT INTO Technician VALUES ('T002', 'Sarah Lim', 'sarah.lim@example.com', '60112856212', 'Facilities Administration');
+INSERT INTO Technician VALUES ('T003', 'John Tan', 'john.tan@example.com', '60113354388', 'Equipment Repair');
+INSERT INTO Technician VALUES ('T004', 'Alice Zhang', 'alice.zhang@example.com', '60117866444', 'Facilities Administration');
+INSERT INTO Technician VALUES ('T005', 'David Lee', 'david.lee@example.com', '60115095565', 'Equipment Repair');
+INSERT INTO Technician VALUES ('T006', 'Emma Cho', 'emma.cho@example.com', '60116638966', 'Facilities Administration');
+INSERT INTO Technician VALUES ('T007', 'Sophia Tan', 'sophia.tan@example.com', '60117987787', 'Equipment Repair');
+INSERT INTO Technician VALUES ('T008', 'Samuel Tan', 'samuel.tan@example.com', '60118328588', 'Facilities Administration');
+INSERT INTO Technician VALUES ('T009', 'Michael Wong', 'michael.wong@example.com', '60119831589', 'Equipment Repair');
+INSERT INTO Technician VALUES ('T010', 'Isabella Tan', 'isabella.tan@example.com', '60120879007', 'Facilities Administration');
+INSERT INTO Technician VALUES ('T011', 'Nadia Ahmad', 'nadia.ahmad@example.com', '60121453311', 'Equipment Repair');
+INSERT INTO Technician VALUES ('T012', 'Benjamin Lee', 'benjamin.lee@example.com', '60122298752', 'Facilities Administration');
+INSERT INTO Technician VALUES ('T013', 'Olivia Lee', 'olivia.lee@example.com', '60125467939', 'Equipment Repair');
+INSERT INTO Technician VALUES ('T014', 'Liam Chia', 'liam.chia@example.com', '60126598844', 'Facilities Administration');
+INSERT INTO Technician VALUES ('T015', 'Noah Tan', 'noah.tan@example.com', '60125556321', 'Equipment Repair');
+INSERT INTO Technician VALUES ('T016', 'Mia Wong', 'mia.wong@example.com', '60123759979', 'Facilities Administration');
+INSERT INTO Technician VALUES ('T017', 'James Chia', 'james.chia@example.com', '60127775644', 'Equipment Repair');
+INSERT INTO Technician VALUES ('T018', 'Ava Wong', 'ava.wong@example.com', '60128888788', 'Facilities Administration');
+INSERT INTO Technician VALUES ('T019', 'William Lee', 'william.lee@example.com', '60129234339', 'Equipment Repair');
+INSERT INTO Technician VALUES ('T020', 'Sophia Cho', 'sophia.cho@example.com', '60130082131', 'Facilities Administration');
+INSERT INTO Technician VALUES ('T021', 'Lucas Tan', 'lucas.tan@example.com', '60131198441', 'Equipment Repair');
+INSERT INTO Technician VALUES ('T022', 'Chloe Lee', 'chloe.lee@example.com', '60133467722', 'Facilities Administration');
+INSERT INTO Technician VALUES ('T023', 'Charlotte Tan', 'charlotte.tan@example.com', '60133333784', 'Equipment Repair');
+INSERT INTO Technician VALUES ('T024', 'Ethan Lim', 'ethan.lim@example.com', '60134453117', 'Facilities Administration');
+INSERT INTO Technician VALUES ('T025', 'Harper Wong', 'harper.wong@example.com', '60135590023', 'Equipment Repair');
+INSERT INTO Technician VALUES ('T026', 'Aiden Tan', 'aiden.tan@example.com', '60136678977', 'Facilities Administration');
+INSERT INTO Technician VALUES ('T027', 'Grace Wong', 'grace.wong@example.com', '60137342227', 'Equipment Repair');
+INSERT INTO Technician VALUES ('T028', 'Henry Tan', 'henry.tan@example.com', '60138123428', 'Facilities Administration');
+INSERT INTO Technician VALUES ('T029', 'Lily Lee', 'lily.lee@example.com', '60139934699', 'Equipment Repair');
+INSERT INTO Technician VALUES ('T030', 'Jack Tan', 'jack.tan@example.com', '60140761296', 'Facilities Administration');
+
+INSERT INTO LibraryResource VALUES ('R001', 'Reading Room', 'Facility', '1st Floor, Block A, Library Building', 'Available');
+INSERT INTO LibraryResource VALUES ('R002', 'Computer Lab', 'Facility', '2nd Floor, Block B, Library Building', 'Under Maintenance');
+INSERT INTO LibraryResource VALUES ('R003', 'Projector', 'Equipment', NULL, 'Available');
+INSERT INTO LibraryResource VALUES ('R004', 'Conference Room', 'Facility', 'Ground Floor, Block A', 'Closed');
+INSERT INTO LibraryResource VALUES ('R005', 'Laptops', 'Equipment', NULL, 'Available');
+INSERT INTO LibraryResource VALUES ('R006', 'DVD Collection', 'Facility', 'Basement, Media Section', 'Available');
+INSERT INTO LibraryResource VALUES ('R007', 'Microphones', 'Equipment', NULL, 'Under Maintenance');
+INSERT INTO LibraryResource VALUES ('R008', 'Sound System', 'Equipment', NULL, 'Available');
+INSERT INTO LibraryResource VALUES ('R009', 'Seminar Room', 'Facility', '3rd Floor, Block C, Library Building', 'Under Maintenance');
+INSERT INTO LibraryResource VALUES ('R010', '3D Printer', 'Equipment', NULL, 'Available');
+INSERT INTO LibraryResource VALUES ('R011', 'Cafeteria', 'Facility', 'Ground Floor, Block A', 'Closed');
+INSERT INTO LibraryResource VALUES ('R012', 'E-Book Reader', 'Equipment', NULL, 'Available');
+INSERT INTO LibraryResource VALUES ('R013', 'Whiteboard', 'Equipment', NULL, 'Available');
+INSERT INTO LibraryResource VALUES ('R014', 'Discussion Room', 'Facility', '2nd Floor, Block A', 'Available');
+INSERT INTO LibraryResource VALUES ('R015', 'Overhead Projector', 'Equipment', NULL, 'Under Maintenance');
+INSERT INTO LibraryResource VALUES ('R016', 'Library Office', 'Facility', 'Ground Floor, Block B', 'Available');
+INSERT INTO LibraryResource VALUES ('R017', 'Flip Chart', 'Equipment', NULL, 'Available');
+INSERT INTO LibraryResource VALUES ('R018', 'Exhibition Hall', 'Facility', '3rd Floor, Block B', 'Available');
+INSERT INTO LibraryResource VALUES ('R019', 'High-speed Internet', 'Equipment', NULL, 'Available');
+INSERT INTO LibraryResource VALUES ('R020', 'Lecture Hall', 'Facility', '1st Floor, Block C', 'Available');
+INSERT INTO LibraryResource VALUES ('R021', 'Portable Speakers', 'Equipment', NULL, 'Under Maintenance');
+INSERT INTO LibraryResource VALUES ('R022', 'Library Lounge', 'Facility', '2nd Floor, Block C', 'Available');
+INSERT INTO LibraryResource VALUES ('R023', 'Scanner', 'Equipment', NULL, 'Available');
+INSERT INTO LibraryResource VALUES ('R024', 'Outdoor Study Area', 'Facility', 'Outside, Library Grounds', 'Available');
+INSERT INTO LibraryResource VALUES ('R025', 'Projector Screen', 'Equipment', NULL, 'Available');
+INSERT INTO LibraryResource VALUES ('R026', 'Book Storage', 'Facility', 'Basement, Block A', 'Available');
+INSERT INTO LibraryResource VALUES ('R027', 'Video Conferencing Equipment', 'Equipment', NULL, 'Under Maintenance');
+INSERT INTO LibraryResource VALUES ('R028', 'Phone Booth', 'Facility', '2nd Floor, Block A', 'Closed');
+INSERT INTO LibraryResource VALUES ('R029', 'Video Camera', 'Equipment', NULL, 'Available');
+INSERT INTO LibraryResource VALUES ('R030', 'VIP Room', 'Facility', 'Ground Floor, Block A', 'Available');
+
+INSERT INTO FacilityReservation VALUES ('FR001', 'M017', 'R003', '2023-01-01', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR002', 'M009', 'R004', '2023-01-03', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR003', 'M022', 'R005', '2023-01-05', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR004', 'M014', 'R006', '2023-01-07', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR005', 'M019', 'R007', '2023-01-09', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR006', 'M028', 'R008', '2023-01-11', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR007', 'M024', 'R009', '2023-01-13', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR008', 'M013', 'R010', '2023-01-15', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR009', 'M018', 'R011', '2023-01-17', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR010', 'M016', 'R012', '2023-01-19', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR011', 'M021', 'R013', '2023-01-21', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR012', 'M029', 'R014', '2023-01-23', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR013', 'M017', 'R015', '2023-01-25', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR014', 'M022', 'R016', '2023-01-27', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR015', 'M010', 'R017', '2023-01-29', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR016', 'M028', 'R018', '2023-01-31', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR017', 'M019', 'R019', '2023-02-01', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR018', 'M026', 'R020', '2023-02-04', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR019', 'M022', 'R021', '2023-02-05', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR020', 'M014', 'R022', '2023-02-06', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR021', 'M027', 'R023', '2023-02-10', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR022', 'M021', 'R024', '2023-02-12', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR023', 'M028', 'R025', '2023-02-14', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR024', 'M024', 'R026', '2023-02-16', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR025', 'M014', 'R027', '2023-02-18', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR026', 'M018', 'R028', '2023-02-24', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR027', 'M021', 'R029', '2023-02-24', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR028', 'M022', 'R030', '2023-02-24', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR029', 'M017', 'R021', '2023-02-26', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR030', 'M014', 'R002', '2023-02-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR031', 'M028', 'R013', '2023-03-02', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR032', 'M010', 'R030', '2023-03-04', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR033', 'M024', 'R030', '2023-03-06', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR034', 'M019', 'R006', '2023-03-08', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR035', 'M026', 'R001', '2023-03-10', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR036', 'M029', 'R008', '2023-03-14', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR037', 'M022', 'R012', '2023-03-14', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR038', 'M021', 'R014', '2023-03-18', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR039', 'M023', 'R009', '2023-03-18', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR040', 'M018', 'R002', '2023-03-18', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR041', 'M014', 'R001', '2023-03-20', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR042', 'M022', 'R027', '2023-03-20', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR043', 'M027', 'R020', '2023-03-20', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR044', 'M019', 'R017', '2023-03-24', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR045', 'M021', 'R007', '2023-03-24', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR046', 'M014', 'R008', '2023-04-25', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR047', 'M018', 'R004', '2023-04-26', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR048', 'M022', 'R023', '2023-04-27', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR049', 'M028', 'R011', '2023-04-27', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR050', 'M027', 'R005', '2023-04-27', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR051', 'M007', 'R003', '2023-04-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR052', 'M022', 'R024', '2023-04-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR053', 'M003', 'R015', '2023-04-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR054', 'M021', 'R002', '2023-04-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR055', 'M014', 'R003', '2023-04-29', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR056', 'M007', 'R004', '2023-04-29', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR057', 'M002', 'R005', '2023-04-30', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR058', 'M017', 'R006', '2023-04-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR059', 'M014', 'R007', '2023-04-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR060', 'M008', 'R008', '2023-04-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR061', 'M002', 'R030', '2023-05-01', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR062', 'M003', 'R014', '2023-05-01', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR063', 'M004', 'R025', '2023-05-02', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR064', 'M005', 'R026', '2023-05-03', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR065', 'M006', 'R027', '2023-05-05', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR066', 'M007', 'R028', '2023-05-07', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR067', 'M008', 'R029', '2023-05-07', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR068', 'M009', 'R010', '2023-05-10', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR069', 'M010', 'R011', '2023-05-11', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR070', 'M011', 'R022', '2023-05-15', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR071', 'M019', 'R013', '2023-05-17', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR072', 'M025', 'R014', '2023-05-17', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR073', 'M014', 'R015', '2023-05-19', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR074', 'M022', 'R006', '2023-05-20', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR075', 'M019', 'R007', '2023-05-22', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR076', 'M028', 'R018', '2023-05-24', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR077', 'M017', 'R027', '2023-06-26', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR078', 'M029', 'R001', '2023-06-28', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR079', 'M023', 'R008', '2023-06-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR080', 'M010', 'R018', '2023-06-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR081', 'M027', 'R028', '2023-06-29', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR082', 'M022', 'R027', '2023-06-29', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR083', 'M014', 'R026', '2023-06-29', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR084', 'M019', 'R025', '2023-06-29', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR085', 'M025', 'R024', '2023-06-30', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR086', 'M027', 'R023', '2023-06-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR087', 'M021', 'R022', '2023-06-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR088', 'M022', 'R021', '2023-06-30', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR089', 'M018', 'R020', '2023-06-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR090', 'M027', 'R019', '2023-06-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR091', 'M017', 'R003', '2023-07-01', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR092', 'M021', 'R004', '2023-07-01', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR093', 'M014', 'R005', '2023-07-04', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR094', 'M023', 'R006', '2023-07-06', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR095', 'M018', 'R007', '2023-07-08', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR096', 'M029', 'R008', '2023-07-10', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR097', 'M021', 'R009', '2023-07-12', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR098', 'M027', 'R010', '2023-07-14', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR099', 'M029', 'R011', '2023-07-16', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR100', 'M017', 'R012', '2023-07-18', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR101', 'M022', 'R013', '2023-07-20', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR102', 'M014', 'R014', '2023-07-20', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR103', 'M023', 'R015', '2023-07-20', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR104', 'M027', 'R016', '2023-07-20', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR105', 'M021', 'R017', '2023-07-20', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR106', 'M019', 'R018', '2023-07-21', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR107', 'M028', 'R019', '2023-08-21', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR108', 'M017', 'R011', '2023-08-22', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR109', 'M021', 'R012', '2023-08-23', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR110', 'M022', 'R013', '2023-08-24', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR111', 'M028', 'R001', '2023-08-24', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR112', 'M014', 'R011', '2023-08-25', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR113', 'M027', 'R002', '2023-08-26', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR114', 'M019', 'R012', '2023-08-26', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR115', 'M023', 'R022', '2023-08-27', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR116', 'M022', 'R008', '2023-08-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR117', 'M021', 'R019', '2023-08-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR118', 'M028', 'R030', '2023-08-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR119', 'M014', 'R021', '2023-08-29', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR120', 'M022', 'R022', '2023-08-29', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR121', 'M017', 'R001', '2023-08-29', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR122', 'M018', 'R002', '2023-08-31', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR123', 'M029', 'R003', '2023-09-02', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR124', 'M014', 'R004', '2023-09-02', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR125', 'M022', 'R005', '2023-09-02', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR126', 'M028', 'R006', '2023-09-03', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR127', 'M027', 'R007', '2023-09-03', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR128', 'M019', 'R008', '2023-09-06', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR129', 'M021', 'R009', '2023-09-06', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR130', 'M017', 'R010', '2023-09-07', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR131', 'M008', 'R011', '2023-09-11', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR132', 'M022', 'R012', '2023-09-11', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR133', 'M014', 'R013', '2023-09-13', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR134', 'M027', 'R014', '2023-09-15', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR135', 'M021', 'R015', '2023-09-16', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR136', 'M029', 'R016', '2023-09-16', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR137', 'M022', 'R017', '2023-09-18', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR138', 'M018', 'R018', '2023-10-18', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR139', 'M019', 'R019', '2023-10-19', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR140', 'M021', 'R020', '2023-10-19', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR141', 'M004', 'R021', '2023-10-20', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR142', 'M009', 'R022', '2023-10-20', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR143', 'M003', 'R023', '2023-10-22', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR144', 'M008', 'R024', '2023-10-24', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR145', 'M002', 'R025', '2023-10-26', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR146', 'M005', 'R026', '2023-10-28', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR147', 'M007', 'R027', '2023-10-29', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR148', 'M006', 'R028', '2023-10-29', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR149', 'M004', 'R029', '2023-10-29', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR150', 'M002', 'R030', '2023-10-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR151', 'M014', 'R003', '2023-10-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR152', 'M018', 'R010', '2023-10-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR153', 'M020', 'R022', '2023-11-01', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR154', 'M015', 'R029', '2023-11-01', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR155', 'M016', 'R014', '2023-11-03', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR156', 'M019', 'R024', '2023-11-03', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR157', 'M012', 'R019', '2023-11-04', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR158', 'M017', 'R027', '2023-11-05', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR159', 'M013', 'R005', '2023-11-05', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR160', 'M011', 'R017', '2023-11-06', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR161', 'M008', 'R010', '2023-11-07', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR162', 'M012', 'R027', '2023-11-09', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR163', 'M014', 'R020', '2023-11-11', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR164', 'M017', 'R029', '2023-11-13', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR165', 'M019', 'R005', '2023-11-15', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR166', 'M021', 'R024', '2023-11-17', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR167', 'M023', 'R003', '2023-11-19', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR168', 'M024', 'R013', '2023-11-19', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR169', 'M015', 'R022', '2023-11-19', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR170', 'M009', 'R018', '2023-11-20', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR171', 'M004', 'R008', '2023-11-22', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR172', 'M030', 'R014', '2023-11-24', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR173', 'M018', 'R007', '2023-11-26', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR174', 'M013', 'R019', '2023-11-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR175', 'M022', 'R028', '2023-11-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR176', 'M016', 'R004', '2023-12-01', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR177', 'M025', 'R009', '2023-12-01', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR178', 'M020', 'R012', '2023-12-01', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR179', 'M010', 'R026', '2023-12-03', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR180', 'M029', 'R017', '2023-12-05', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR181', 'M009', 'R015', '2023-12-07', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR182', 'M014', 'R030', '2023-12-09', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR183', 'M019', 'R020', '2023-12-11', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR184', 'M022', 'R012', '2024-01-02', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR185', 'M003', 'R018', '2024-01-04', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR186', 'M011', 'R028', '2024-01-06', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR187', 'M028', 'R030', '2024-01-08', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR188', 'M004', 'R022', '2024-01-10', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR189', 'M030', 'R023', '2024-01-12', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR190', 'M017', 'R019', '2024-01-14', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR191', 'M012', 'R014', '2024-01-16', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR192', 'M020', 'R021', '2024-01-16', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR193', 'M013', 'R009', '2024-01-20', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR194', 'M028', 'R010', '2024-01-22', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR195', 'M017', 'R024', '2024-01-24', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR196', 'M029', 'R017', '2024-01-26', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR197', 'M006', 'R002', '2024-01-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR198', 'M015', 'R013', '2024-01-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR199', 'M022', 'R026', '2024-01-29', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR200', 'M021', 'R016', '2024-01-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR201', 'M017', 'R027', '2024-02-01', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR202', 'M006', 'R001', '2024-02-10', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR203', 'M014', 'R009', '2024-02-12', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR204', 'M028', 'R003', '2024-02-24', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR205', 'M012', 'R008', '2024-02-26', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR206', 'M026', 'R005', '2024-02-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR207', 'M009', 'R015', '2024-02-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR208', 'M001', 'R011', '2024-02-28', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR209', 'M007', 'R004', '2024-02-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR210', 'M030', 'R023', '2024-02-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR211', 'M002', 'R007', '2024-03-08', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR212', 'M022', 'R006', '2024-03-10', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR213', 'M025', 'R017', '2024-03-12', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR214', 'M013', 'R018', '2024-03-14', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR215', 'M004', 'R010', '2024-03-16', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR216', 'M020', 'R021', '2024-03-18', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR217', 'M011', 'R026', '2024-03-20', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR218', 'M016', 'R030', '2024-03-22', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR219', 'M019', 'R014', '2024-03-24', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR220', 'M005', 'R020', '2024-03-26', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR221', 'M006', 'R013', '2024-04-02', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR222', 'M019', 'R026', '2024-04-06', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR223', 'M024', 'R009', '2024-04-18', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR224', 'M017', 'R029', '2024-03-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR225', 'M003', 'R002', '2024-03-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR226', 'M011', 'R005', '2024-04-11', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR227', 'M020', 'R028', '2024-04-21', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR228', 'M015', 'R015', '2024-04-10', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR229', 'M029', 'R007', '2024-04-09', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR230', 'M008', 'R030', '2024-04-26', 'Ready');
+
+INSERT INTO FacilityReservation VALUES ('FR231', 'M026', 'R001', '2024-04-03', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR232', 'M021', 'R011', '2024-03-26', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR233', 'M002', 'R004', '2024-04-05', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR234', 'M027', 'R017', '2024-04-20', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR235', 'M007', 'R012', '2024-04-01', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR236', 'M010', 'R019', '2024-04-23', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR237', 'M022', 'R003', '2024-04-04', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR238', 'M014', 'R008', '2024-04-15', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR239', 'M025', 'R018', '2024-04-08', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR240', 'M012', 'R025', '2024-03-31', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR241', 'M014', 'R018', '2024-04-26', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR242', 'M022', 'R020', '2024-04-28', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR243', 'M005', 'R024', '2024-04-29', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR244', 'M027', 'R012', '2024-05-01', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR245', 'M019', 'R022', '2024-05-03', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR246', 'M016', 'R010', '2024-05-05', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR247', 'M021', 'R027', '2024-05-07', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR248', 'M022', 'R003', '2024-05-09', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR249', 'M017', 'R025', '2024-05-11', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR250', 'M026', 'R016', '2024-05-13', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR251', 'M029', 'R008', '2024-05-15', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR252', 'M022', 'R019', '2024-05-17', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR253', 'M010', 'R002', '2024-05-19', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR254', 'M013', 'R021', '2024-05-21', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR255', 'M025', 'R023', '2024-05-23', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR256', 'M029', 'R013', '2024-05-25', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR257', 'M016', 'R014', '2024-05-27', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR258', 'M010', 'R009', '2024-05-29', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR259', 'M022', 'R017', '2024-05-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR260', 'M027', 'R015', '2024-05-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR261', 'M014', 'R003', '2024-05-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR262', 'M019', 'R020', '2024-06-01', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR263', 'M027', 'R022', '2024-06-03', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR264', 'M021', 'R025', '2024-06-05', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR265', 'M022', 'R017', '2024-06-07', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR266', 'M023', 'R019', '2024-06-09', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR267', 'M025', 'R004', '2024-06-11', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR268', 'M010', 'R013', '2024-06-13', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR269', 'M027', 'R026', '2024-06-15', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR270', 'M018', 'R014', '2024-06-17', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR271', 'M029', 'R021', '2024-06-19', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR272', 'M022', 'R024', '2024-06-21', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR273', 'M025', 'R018', '2024-06-23', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR274', 'M027', 'R027', '2024-06-25', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR275', 'M010', 'R009', '2024-06-27', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR276', 'M029', 'R016', '2024-06-29', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR277', 'M022', 'R002', '2024-06-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR278', 'M013', 'R023', '2024-06-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR279', 'M018', 'R005', '2024-06-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR280', 'M021', 'R008', '2024-06-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR281', 'M010', 'R006', '2024-06-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR282', 'M018', 'R004', '2024-07-01', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR283', 'M022', 'R012', '2024-07-02', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR284', 'M029', 'R016', '2024-07-03', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR285', 'M003', 'R025', '2024-07-04', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR286', 'M017', 'R028', '2024-07-05', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR287', 'M014', 'R023', '2024-07-06', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR288', 'M026', 'R020', '2024-07-07', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR289', 'M019', 'R019', '2024-07-08', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR290', 'M027', 'R014', '2024-07-09', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR291', 'M021', 'R021', '2024-07-10', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR292', 'M005', 'R013', '2024-07-11', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR293', 'M025', 'R011', '2024-07-12', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR294', 'M009', 'R008', '2024-07-13', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR295', 'M022', 'R007', '2024-07-14', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR296', 'M016', 'R022', '2024-07-15', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR297', 'M010', 'R001', '2024-07-16', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR298', 'M028', 'R027', '2024-07-17', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR299', 'M013', 'R024', '2024-07-18', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR300', 'M024', 'R030', '2024-07-19', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR301', 'M025', 'R011', '2024-07-19', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR302', 'M022', 'R006', '2024-07-20', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR303', 'M003', 'R023', '2024-07-21', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR304', 'M017', 'R009', '2024-07-22', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR305', 'M014', 'R024', '2024-07-23', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR306', 'M028', 'R003', '2024-07-24', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR307', 'M022', 'R008', '2024-07-25', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR308', 'M013', 'R005', '2024-07-26', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR309', 'M010', 'R010', '2024-07-27', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR310', 'M027', 'R018', '2024-07-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR311', 'M029', 'R026', '2024-07-29', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR312', 'M021', 'R019', '2024-07-30', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR313', 'M017', 'R013', '2024-08-01', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR314', 'M022', 'R020', '2024-08-02', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR315', 'M003', 'R025', '2024-08-03', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR316', 'M019', 'R007', '2024-08-04', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR317', 'M005', 'R012', '2024-08-05', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR318', 'M014', 'R014', '2024-08-06', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR319', 'M029', 'R027', '2024-08-07', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR320', 'M017', 'R017', '2024-08-08', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR321', 'M021', 'R004', '2024-08-09', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR322', 'M022', 'R029', '2024-08-10', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR323', 'M027', 'R001', '2024-08-11', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR324', 'M025', 'R028', '2024-08-12', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR325', 'M003', 'R015', '2024-08-13', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR326', 'M014', 'R021', '2024-08-14', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR327', 'M019', 'R022', '2024-08-15', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR328', 'M027', 'R016', '2024-08-16', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR329', 'M021', 'R023', '2024-08-17', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR330', 'M018', 'R030', '2024-08-18', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR331', 'M022', 'R024', '2024-08-19', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR332', 'M014', 'R013', '2024-08-20', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR333', 'M028', 'R020', '2024-08-21', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR334', 'M027', 'R011', '2024-08-22', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR335', 'M021', 'R002', '2024-08-23', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR336', 'M022', 'R005', '2024-08-24', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR337', 'M013', 'R029', '2024-08-25', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR338', 'M017', 'R021', '2024-08-26', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR339', 'M019', 'R008', '2024-08-27', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR340', 'M024', 'R019', '2024-08-28', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR341', 'M005', 'R027', '2024-08-29', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR342', 'M022', 'R015', '2024-08-30', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR343', 'M017', 'R018', '2024-09-01', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR344', 'M019', 'R024', '2024-09-02', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR345', 'M014', 'R009', '2024-09-03', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR346', 'M021', 'R017', '2024-09-04', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR347', 'M026', 'R030', '2024-09-05', 'Cancelled');
+INSERT INTO FacilityReservation VALUES ('FR348', 'M025', 'R004', '2024-09-06', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR349', 'M010', 'R026', '2024-09-07', 'Ready');
+INSERT INTO FacilityReservation VALUES ('FR350', 'M022', 'R012', '2024-09-08', 'Ready');
+
+INSERT INTO BorrowingRecord VALUES 
+('BR001', 'M001', 'L002', 'B001', '2017-08-05', '2017-09-05', '2017-09-06', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR002', 'M006', 'L004', 'B001', '2017-10-15', '2017-12-15', '2017-12-01', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR003', 'M013', 'L001', 'B001', '2018-10-01', '2018-11-01', '2018-10-29', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR004', 'M012', 'L003', 'B001', '2018-12-20', '2019-02-20', '2019-02-19', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR005', 'M025', 'L006', 'B001', '2019-04-15', '2019-05-15', '2019-05-25', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR006', 'M030', 'L002', 'B001', '2019-09-01', '2019-11-01', '2019-10-30', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR007', 'M010', 'L004', 'B001', '2020-03-01', '2020-05-01', '2020-05-02', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR008', 'M007', 'L005', 'B001', '2021-12-10', '2022-01-10', '2021-12-15', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR009', 'M022', 'L006', 'B001', '2023-01-01', '2023-03-01', '2023-01-02', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR010', 'M028', 'L007', 'B001', '2024-06-07', '2024-08-07', NULL, 'Borrowed', 'Yes');
+
+INSERT INTO BorrowingRecord VALUES 
+('BR011', 'M003', 'L003', 'B002', '2020-09-10', '2020-10-10', '2020-10-16', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR012', 'M004', 'L001', 'B002', '2020-10-21', '2020-12-21', '2020-12-25', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR013', 'M005', 'L002', 'B002', '2021-01-10', '2021-02-10', '2021-02-10', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR014', 'M019', 'L003', 'B002', '2021-12-01', '2022-01-01', '2022-12-09', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR015', 'M021', 'L006', 'B002', '2022-02-20', '2022-03-20', '2022-03-30', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR016', 'M024', 'L004', 'B002', '2022-07-01', '2022-09-01', '2022-08-29', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR017', 'M016', 'L007', 'B002', '2023-08-12', '2023-10-12', '2023-10-01', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR018', 'M027', 'L009', 'B002', '2023-10-02', '2023-11-02', '2023-11-03', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR019', 'M026', 'L005', 'B002', '2024-01-24', '2024-03-24', '2024-04-04', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR020', 'M017', 'L006', 'B002', '2024-08-18', '2024-09-18', NULL, 'Borrowed', 'No');
+
+
+
+INSERT INTO BorrowingRecord VALUES 
+('BR021', 'M007', 'L002', 'B003', '2020-12-10', '2021-01-10',  '2020-12-27', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR022', 'M008', 'L001', 'B003', '2022-01-01', '2022-03-01', '2022-03-14', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR023', 'M009', 'L004', 'B003', '2024-09-05', '2024-10-05', NULL, 'Borrowed', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR024', 'M010', 'L007', 'B004', '2019-02-15', '2019-04-15', '2019-04-20', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR025', 'M011', 'L006', 'B004', '2024-10-11', '2024-11-11', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR026', 'M012', 'L008', 'B005', '2024-07-16', '2024-09-16', NULL, 'Borrowed', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR027', 'M013', 'L009', 'B006', '2018-02-15', '2018-03-15', '2024-03-12', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR028', 'M014', 'L001', 'B006', '2018-03-13', '2018-05-13', '2023-05-17', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR029', 'M028', 'L009', 'B006', '2022-01-21', '2022-03-21', '2023-03-27', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR030', 'M015', 'L002', 'B006', '2023-07-16', '2023-08-16', NULL, 'Borrowed', 'Yes');
+
+INSERT INTO BorrowingRecord VALUES 
+('BR031', 'M017', 'L003', 'B007', '2019-12-15', '2020-01-15', '2020-01-13', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR032', 'M018', 'L002', 'B007', '2020-12-02', '2021-02-02', '2021-01-03', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR033', 'M020', 'L001', 'B008', '2017-04-20', '2017-06-20', '2017-06-22', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR034', 'M021', 'L002', 'B008', '2017-07-15', '2017-08-15', '2017-08-10', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR035', 'M022', 'L003', 'B008', '2017-12-10', '2018-02-10', '2017-12-15', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR036', 'M023', 'L005', 'B008', '2018-01-25', '2018-02-25',  '2018-03-08', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR037', 'M024', 'L006', 'B008', '2018-06-05', '2018-08-05', '2018-08-05', 'Returned',  'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR038', 'M025', 'L002', 'B008', '2019-11-30', '2019-12-30', '2019-12-29', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR039', 'M026', 'L007', 'B008', '2019-10-15', '2019-12-15', '2019-12-10', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR040', 'M022', 'L010', 'B008', '2020-02-15', '2020-04-15', '2020-02-28', 'Returned', 'No');
+
+
+INSERT INTO BorrowingRecord VALUES 
+('BR041', 'M024', 'L002', 'B008', '2020-05-01', '2020-07-01', '2020-06-28', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR042', 'M025', 'L003', 'B008', '2020-08-21', '2020-09-21', '2020-09-30', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR043', 'M027', 'L008', 'B008', '2021-02-05', '2021-03-05', '2021-03-10', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR044', 'M026', 'L010', 'B008', '2021-03-11', '2021-05-11', '2021-05-07', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR045', 'M029', 'L006', 'B008', '2021-09-20', '2021-10-20', '2021-10-21', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR046', 'M020', 'L001', 'B008', '2022-07-10', '2022-09-10',  '2022-09-03', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR047', 'M023', 'L005', 'B008', '2022-11-15', '2022-12-15', '2022-12-14', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR048', 'M019', 'L002', 'B008', '2022-12-16', '2023-01-16', '2022-12-31', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR049', 'M018', 'L007', 'B008', '2023-01-11', '2023-03-11', '2023-03-14', 'Returned', 'Yes');
+
+INSERT INTO BorrowingRecord VALUES 
+('BR050', 'M012', 'L004', 'B008', '2023-09-01', '2023-11-01', '2023-10-30', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR051', 'M010', 'L006', 'B008', '2024-07-15', '2024-09-15', '2024-09-25', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR052', 'M014', 'L005', 'B008', '2024-08-23', '2024-10-23', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES
+('BR053', 'M016', 'L008', 'B009', '2021-08-01', '2021-10-01', '2021-10-07', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR054', 'M027', 'L007', 'B009', '2022-11-10', '2022-12-10', '2022-11-18', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR055', 'M013', 'L003', 'B010', '2018-05-15', '2018-06-15', '2018-05-18', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR056', 'M022', 'L002', 'B010', '2022-05-25', '2022-07-25', '2022-07-29', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR057', 'M021', 'L001', 'B010', '2024-08-07', '2024-09-07', NULL, 'Borrowed', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR058', 'M024', 'L009', 'B011', '2023-06-10', '2023-08-10', '2023-08-20', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR059', 'M025', 'L010', 'B012', '2019-07-20', '2019-08-20', '2019-08-29', 'Overdue', 'No');
+
+
+
+INSERT INTO BorrowingRecord VALUES
+('BR060', 'M030', 'L004', 'B012', '2020-06-01', '2020-08-01', '2020-08-01', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR061', 'M022', 'L006', 'B012', '2022-01-27', '2022-03-27', '2022-01-28', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR062', 'M023', 'L003', 'B012', '2022-07-29', '2022-08-29', '2022-09-02', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR063', 'M024', 'L009', 'B013', '2019-10-15', '2019-12-15', '2019-12-10', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR064', 'M025', 'L008', 'B013', '2023-06-05', '2023-07-05', '2023-07-07', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR065', 'M026', 'L002', 'B014', '2019-09-20', '2019-11-20', '2019-11-30', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES
+('BR066', 'M027', 'L004', 'B014', '2021-02-11', '2021-03-11', '2021-02-28', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR067', 'M028', 'L003', 'B014', '2023-07-15', '2023-09-15', '2023-09-18', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR068', 'M029', 'L001', 'B015', '2024-09-27', '2024-10-27', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES
+('BR069', 'M030', 'L009', 'B016', '2018-08-22', '2018-10-22', '2023-10-18', 'Returned', 'No');
+
+INSERT INTO BorrowingRecord VALUES 
+('BR070', 'M001', 'L006', 'B016', '2020-02-25', '2020-03-25', '2020-04-10', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR071', 'M002', 'L008', 'B016', '2022-04-10', '2022-06-10', '2022-06-02', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR072', 'M001', 'L007', 'B016', '2024-10-12', '2024-11-12', NULL, 'Borrowed', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR073', 'M004', 'L010', 'B017', '2023-02-09', '2023-04-09', '2023-04-20', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR074', 'M005', 'L005', 'B017', '2023-04-28', '2023-05-28', '2023-06-01', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR075', 'M006', 'L012', 'B018', '2018-10-01', '2018-12-01','2018-12-10', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR076', 'M007', 'L011', 'B018', '2021-01-17', '2021-02-17', '2021-02-20', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR077', 'M008', 'L015', 'B018', '2023-05-20', '2023-07-20', '2023-06-05', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR078', 'M009', 'L017', 'B019', '2018-02-17', '2018-03-17', '2018-03-15', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR079', 'M010', 'L016', 'B019', '2018-04-21', '2018-06-21', '2018-07-01', 'Overdue', 'Yes');
+
+
+
+INSERT INTO BorrowingRecord VALUES 
+('BR080', 'M011', 'L001', 'B019', '2019-02-06', '2019-03-06', '2019-02-07', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR081', 'M012', 'L003', 'B019', '2019-04-08', '2019-06-08', '2019-06-20', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR082', 'M013', 'L002', 'B019', '2019-06-22', '2019-07-22’, '2019-07-23', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR083', 'M014', 'L004', 'B019', '2020-03-02', '2020-05-02', '2020-05-01', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR084', 'M015', 'L006', 'B019', '2020-06-05', '2020-07-05', '2020-06-15', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR085', 'M016', 'L007', 'B019', '2020-09-20', '2020-11-20', '2020-12-01', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR086', 'M017', 'L009', 'B019', '2021-07-16', '2021-08-16', '2021-07-20', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR087', 'M018', 'L010', 'B019', '2021-08-18', '2021-10-18', '2021-10-21', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR088', 'M019', 'L012', 'B019', '2021-11-18', '2021-12-18', '2021-12-30', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR089', 'M020', 'L011', 'B019', '2022-01-12', '2022-03-12', '2022-03-14', 'Overdue', 'No');
+
+INSERT INTO BorrowingRecord VALUES 
+('BR090', 'M021', 'L015', 'B019', '2022-04-02', '2022-05-02', '2022-04-28', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR091', 'M022', 'L016', 'B019', '2022-05-01', '2022-07-01', '2022-05-10', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR092', 'M023', 'L018', 'B019', '2022-05-13', '2022-06-13', '2022-06-14', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR093', 'M024', 'L020', 'B019', '2022-10-21', '2022-12-21', '2022-12-24', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR094', 'M025', 'L022', 'B019', '2023-02-07', '2023-03-07', '2023-03-10' , 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR095', 'M026', 'L023', 'B019', '2023-04-20', '2023-06-20', '2023-06-22', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR096', 'M027', 'L024', 'B019', '2023-09-16', '2023-10-16', '2023-10-27', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR097', 'M028', 'L026', 'B019', '2024-10-18', '2024-12-18', NULL, 'Borrowed', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR098', 'M029', 'L028', 'B020', '2022-12-10', '2023-01-10', '2023-01-01', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR099', 'M030', 'L030', 'B020', '2024-10-27', '2024-12-27', NULL, 'Borrowed', 'Yes');
+
+
+
+INSERT INTO BorrowingRecord VALUES 
+('BR100', 'M001', 'L001', 'B021', '2023-06-08', '2023-07-08', '2023-07-10', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR101', 'M002', 'L003', 'B022', '2021-06-10', '2021-08-10', '2021-08-08', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR102', 'M003', 'L002', 'B022', '2023-03-20', '2023-04-20', '2023-04-01', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR103', 'M004', 'L006', 'B023', '2024-09-12', '2024-11-12', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR104', 'M005', 'L008', 'B024', '2019-09-01', '2019-10-01', '2019-10-20', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR105', 'M006', 'L007', 'B024', '2021-04-15', '2021-06-15', '2021-04-19', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR106', 'M007', 'L010', 'B025', '2020-08-31', '2020-09-30', '2020-10-01', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR107', 'M008', 'L012', 'B025', '2022-04-28', '2022-06-28', '2022-05-15', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR108', 'M009', 'L014', 'B025', '2024-07-18', '2024-08-18', NULL, 'Borrowed', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR109', 'M010', 'L015', 'B026', '2020-05-05', '2020-07-05', '2020-07-03', 'Returned', 'No');
+
+INSERT INTO BorrowingRecord VALUES 
+('BR110', 'M011', 'L017', 'B026', '2020-03-12', '2020-04-12', '2020-04-16', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR111', 'M012', 'L018', 'B027', '2024-07-19', '2021-09-19', NULL, 'Borrowed', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR112', 'M013', 'L019', 'B028', '2019-07-20', '2019-08-20', '2019-09-01', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR113', 'M014', 'L020', 'B028', '2023-02-26', '2023-04-26', '2023-04-28', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR114', 'M015', 'L021', 'B029', '2021-01-05', '2021-02-05', '2021-01-10', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR115', 'M016', 'L022', 'B029', '2023-04-20', '2023-06-20', '2023-06-01', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR116', 'M017', 'L023', 'B029', '2022-11-27', '2022-12-27', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR117', 'M018', 'L024', 'B030', '2019-08-08', '2019-10-08', '2019-10-15', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR118', 'M019', 'L025', 'B030', '2023-09-01', '2023-10-01', '2023-09-29', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR119', 'M020', 'L026', 'B031', '2022-07-18', '2022-09-18', '2022-09-05', 'Returned', 'No');
+
+
+
+INSERT INTO BorrowingRecord VALUES 
+('BR120', 'M021', 'L027', 'B032', '2023-02-23', '2023-03-23', '2023-04-02', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR121', 'M022', 'L028', 'B032', '2022-04-05', '2023-05-05', '2023-04-10', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR122', 'M023', 'L029', 'B033', '2024-08-28', '2024-09-29', NULL, 'Borrowed', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR123', 'M024', 'L030', 'B034', '2020-05-20', '2020-07-20', '2020-07-25', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR124', 'M025', 'L001', 'B034', '2023-02-25', '2023-03-25', '2023-04-15', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR125', 'M026', 'L002', 'B035', '2024-10-10', '2024-12-10', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR126', 'M027', 'L003', 'B036', '2019-10-21', '2019-11-21', '2019-11-29', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR127', 'M028', 'L004', 'B036', '2020-01-01', '2020-03-01', '2020-01-18', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR128', 'M029', 'L005', 'B036', '2020-12-10', '2021-01-10', '2021-01-11', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR129', 'M030', 'L006', 'B036', '2023-09-27', '2023-11-27', '2023-11-26', 'Returned', 'No');
+
+INSERT INTO BorrowingRecord VALUES 
+('BR130', 'M001', 'L007', 'B037', '2022-09-10', '2022-10-10', '2022-09-20', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR131', 'M002', 'L008', 'B037', '2022-09-24', '2022-11-24', '2022-11-29', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR132', 'M003', 'L009', 'B038', '2020-05-12', '2020-06-12', '2020-06-18', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR133', 'M004', 'L010', 'B039', '2021-01-01', '2021-03-01', '2021-02-01', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR134', 'M005', 'L011', 'B039', '2024-11-10', '2024-12-10', NULL, 'Borrowed', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR135', 'M006', 'L012', 'B040', '2023-07-02', '2023-09-02', '2023-09-06', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR136', 'M007', 'L013', 'B040', '2023-11-19', '2023-12-19', '2023-11-26', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR137', 'M008', 'L014', 'B041', '2019-07-20', '2019-09-20', '2019-09-19', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR138', 'M009', 'L015', 'B042', '2020-04-10', '2020-05-10', '2020-05-16', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR139', 'M010', 'L016', 'B042', '2023-06-05', '2023-08-05', '2023-08-12', 'Overdue', 'No');
+
+
+
+INSERT INTO BorrowingRecord VALUES 
+('BR140', 'M011', 'L017', 'B043', '2023-08-15', '2023-09-15', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR141', 'M012', 'L018', 'B044', '2021-03-02', '2021-05-02', '2021-05-07', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR142', 'M013', 'L019', 'B044', '2023-03-19', '2023-04-19', '2023-04-20', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR143', 'M014', 'L020', 'B045', '2022-10-19', '2022-12-19', NULL, 'Borrowed', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR144', 'M015', 'L021', 'B046', '2020-02-22', '2020-03-22', '2020-04-01', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR145', 'M016', 'L022', 'B046', '2020-09-20', '2020-11-20', '2020-11-10', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR146', 'M017', 'L023', 'B047', '2021-03-15', '2021-04-15', '2021-04-12', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR147', 'M018', 'L024', 'B048', '2019-06-01', '2019-08-01', '2019-07-08', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR148', 'M019', 'L025', 'B048', '2019-10-05', '2020-11-05', '2020-11-08', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR149', 'M020', 'L026', 'B048', '2022-09-04', '2022-11-04', '2022-11-07', 'Returned', 'Yes');
+
+
+INSERT INTO BorrowingRecord VALUES 
+('BR150', 'M021', 'L027', 'B049', '2021-01-01', '2021-02-01', '2021-02-05', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR151', 'M022', 'L028', 'B049', '2022-06-10', '2022-08-10', '2022-07-12', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR152', 'M023', 'L029', 'B050', '2020-10-05', '2020-11-05', '2020-11-18', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR153', 'M024', 'L030', 'B050', '2020-12-20', '2021-02-20', '2020-12-31', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR154', 'M025', 'L001', 'B050', '2023-06-17', '2023-07-17', '2023-06-20', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR155', 'M026', 'L002', 'B051', '2024-10-22', '2024-12-22', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR156', 'M027', 'L003', 'B052', '2023-03-10', '2023-04-10', '2023-04-10', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR157', 'M028', 'L004', 'B052', '2023-05-25', '2023-07-25', '2023-08-08', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR158', 'M029', 'L005', 'B053', '2019-08-23', '2019-09-23', '2019-08-30', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR159', 'M030', 'L006', 'B053', '2021-12-01', '2022-02-01', '2022-01-08', 'Returned', 'No');
+
+INSERT INTO BorrowingRecord VALUES 
+('BR160', 'M001', 'L007', 'B053', '2024-06-06', '2024-07-06', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR161', 'M002', 'L008', 'B054', '2022-03-20', '2022-05-20', '2022-05-26', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR162', 'M003', 'L009', 'B054', '2023-10-19', '2023-11-19', '2023-11-02', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR163', 'M004', 'L010', 'B055', '2018-02-21', '2018-04-21', '2018-04-01', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR164', 'M005', 'L011', 'B055', '2021-04-07', '2021-05-07', '2021-05-11', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR165', 'M006', 'L012', 'B056', '2019-06-10', '2019-08-10', '2019-08-15', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR166', 'M007', 'L013', 'B057', '2021-11-11', '2021-12-11', '2021-11-12', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR167', 'M008', 'L014', 'B057', '2024-08-19', '2024-10-19', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR168', 'M009', 'L015', 'B058', '2020-05-01', '2020-06-01', '2020-06-10', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR169', 'M010', 'L016', 'B059', '2020-09-28', '2020-11-28', '2020-11-09', 'Returned', 'No');
+
+INSERT INTO BorrowingRecord VALUES 
+('BR170', 'M011', 'L017', 'B059', '2022-08-01', '2022-09-01', '2022-09-01', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR171', 'M012', 'L018', 'B059', '2023-07-20', '2023-09-20', '2023-09-25', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR172', 'M013', 'L019', 'B060', '2021-02-18', '2021-03-18', '2021-03-26', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR173', 'M014', 'L020', 'B061', '2023-06-27', '2023-08-27', '2023-08-31', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR174', 'M015', 'L021', 'B061', '2024-10-06', '2024-11-06', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR175', 'M016', 'L022', 'B062', '2020-09-22', '2020-11-22', '2020-11-11', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR176', 'M017', 'L023', 'B063', '2019-03-14', '2019-04-14', '2019-04-17', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR177', 'M018', 'L024', 'B063', '2024-10-10', '2024-12-10', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR178', 'M019', 'L025', 'B064', '2021-11-20', '2021-12-20', '2021-12-15', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR179', 'M020', 'L026', 'B065', '2019-08-31', '2019-10-31', '2019-11-10', 'Overdue', 'Yes');
+
+
+
+INSERT INTO BorrowingRecord VALUES 
+('BR180', 'M021', 'L027', 'B065', '2022-05-17', '2022-06-17', '2022-06-10', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR181', 'M022', 'L028', 'B066', '2023-04-04', '2023-06-04', '2023-04-05', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR182', 'M023', 'L029', 'B067', '2020-04-01', '2020-05-01', '2020-05-10', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR183', 'M024', 'L030', 'B067', '2024-07-16', '2024-09-16', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR184', 'M025', 'L001', 'B068', '2020-06-29', '2020-07-29', '2020-07-27', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR185', 'M026', 'L002', 'B069', '2021-02-02', '2021-04-02', '2021-04-10', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR186', 'M027', 'L003', 'B069', '2023-05-05', '2023-06-05', '2023-05-20', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR187', 'M028', 'L004', 'B070', '2019-08-23', '2019-10-23', '2019-09-23', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR188', 'M029', 'L005', 'B071', '2019-10-01', '2020-11-01', '2020-11-10', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR189', 'M030', 'L006', 'B071', '2024-10-27', '2024-12-27', NULL, 'Borrowed', 'No');
+
+INSERT INTO BorrowingRecord VALUES 
+('BR190', 'M001', 'L007', 'B072', '2023-03-01', '2023-04-01', '2023-04-07', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR191', 'M002', 'L008', 'B073', '2020-10-10', '2020-12-10', '2020-12-12', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR192', 'M003', 'L009', 'B073', '2024-10-17', '2024-11-17', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR193', 'M004', 'L010', 'B074', '2019-03-07', '2019-05-07', '2019-03-10', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR194', 'M005', 'L011', 'B075', '2022-02-26', '2022-03-26', '2022-03-27', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR195', 'M006', 'L012', 'B075', '2024-10-03', '2024-12-03', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR196', 'M007', 'L013', 'B076', '2024-02-10', '2024-03-10', '2024-03-08', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR197', 'M008', 'L014', 'B077', '2018-06-14', '2018-08-14', '2018-06-29', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR198', 'M009', 'L015', 'B077', '2022-09-22', '2022-10-22', '2022-10-24', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR199', 'M010', 'L016', 'B078', '2023-12-26', '2024-02-26', '2024-03-01', 'Overdue', 'No');
+
+
+
+INSERT INTO BorrowingRecord VALUES 
+('BR200', 'M011', 'L017', 'B079', '2022-03-17', '2022-04-17', '2022-04-08', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR201', 'M012', 'L018', 'B079', '2024-07-26', '2024-09-26', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR202', 'M013', 'L019', 'B080', '2021-09-04', '2021-10-04', '2021-10-08', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR203', 'M014', 'L020', 'B081', '2021-01-20', '2021-03-20', '2021-04-01', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR204', 'M015', 'L021', 'B081', '2021-08-22', '2021-09-22', '2021-09-18', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR205', 'M016', 'L022', 'B082', '2023-11-11', '2024-01-11', '2024-01-10', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR206', 'M018', 'L024', 'B083', '2019-06-01', '2019-08-01', '2019-07-10', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR207', 'M017', 'L023', 'B083', '2024-11-25', '2024-12-25', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR208', 'M019', 'L025', 'B084', '2019-12-10', '2020-01-10', '2019-12-31', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR209', 'M020', 'L026', 'B085', '2023-04-27', '2023-06-27', '2023-05-02', 'Returned', 'No');
+
+INSERT INTO BorrowingRecord VALUES 
+('BR210', 'M021', 'L007', 'B085', '2024-09-11', '2024-10-11', NULL, 'Borrowed', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR211', 'M022', 'L009', 'B086', '2020-12-27', '2021-02-27', '2021-03-01', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR212', 'M023', 'L010', 'B087', '2019-07-15', '2019-08-15', '2019-08-24', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR213', 'M024', 'L011', 'B087', '2019-09-19', '2019-11-19', '2019-11-07', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR214', 'M025', 'L012', 'B088', '2020-06-28', '2020-07-28', '2020-07-07', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR215', 'M026', 'L013', 'B089', '2021-03-09', '2021-05-09', '2021-04-02', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR216', 'M027', 'L014', 'B089', '2024-09-03', '2024-10-03', NULL, 'Borrowed', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR217', 'M028', 'L015', 'B090', '2020-10-21', '2020-12-21', '2020-11-12', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR218', 'M029', 'L016', 'B091', '2022-08-10', '2022-09-10', '2022-08-29', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR219', 'M030', 'L017', 'B091', '2022-08-30', '2022-10-30', '2022-11-10', 'Overdue', 'Yes');
+
+
+
+INSERT INTO BorrowingRecord VALUES 
+('BR220', 'M005', 'L018', 'B092', '2020-11-05', '2020-12-05', '2020-12-03', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR221', 'M012', 'L019', 'B093', '2019-12-09', '2020-02-09', '2020-02-11', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR222', 'M018', 'L020', 'B093', '2022-09-12', '2022-11-12', NULL, 'Borrowed', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR223', 'M009', 'L021', 'B094', '2023-02-24', '2023-03-24', '2023-03-19', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR224', 'M021', 'L022', 'B095', '2018-03-28', '2018-04-28', '2018-05-07', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR225', 'M026', 'L023', 'B095', '2018-05-08', '2018-07-08', '2018-06-23', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR226', 'M013', 'L024', 'B095', '2018-07-17', '2018-08-17', '2018-08-20', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR227', 'M030', 'L025', 'B095', '2018-11-02', '2019-01-02', '2018-11-06', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR228', 'M003', 'L026', 'B095', '2019-04-19', '2019-05-19', '2019-05-20', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR229', 'M007', 'L027', 'B095', '2019-08-11', '2019-09-11', '2021-09-11', 'Returned', 'No');
+
+INSERT INTO BorrowingRecord VALUES 
+('BR230', 'M008', 'L028', 'B095', '2020-06-13', '2020-08-13', '2020-06-17', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR231', 'M017', 'L029', 'B095', '2020-08-02', '2020-09-02', '2020-09-12', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR232', 'M011', 'L030', 'B095', '2020-10-10', '2020-11-10', '2020-11-11', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR233', 'M004', 'L001', 'B095', '2021-02-28', '2021-04-28', '2021-04-28', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR234', 'M022', 'L002', 'B095', '2021-04-29', '2021-06-29', '2021-07-01', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR235', 'M030', 'L003', 'B095', '2021-08-17', '2021-10-17', '2021-08-25', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR236', 'M014', 'L004', 'B095', '2021-09-09', '2021-11-09', '2021-11-01', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR237', 'M025', 'L005', 'B095', '2021-11-13', '2021-12-13', '2022-12-15', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR238', 'M015', 'L006', 'B095', '2022-03-05', '2022-04-05', '2022-04-01', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR239', 'M006', 'L007', 'B095', '2022-07-23', '2022-09-23', '2022-10-01', 'Overdue', 'Yes');
+
+
+
+INSERT INTO BorrowingRecord VALUES 
+('BR240', 'M023', 'L008', 'B095', '2023-02-11', '2023-03-11', '2023-03-12', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR241', 'M010', 'L009', 'B095', '2023-05-23', '2023-07-23', '2023-07-28', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR242', 'M002', 'L010', 'B095', '2023-11-15', '2024-01-15', '2023-12-13', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR243', 'M019', 'L011', 'B095', '2024-10-27', '2024-11-27', NULL, 'Borrowed', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR244', 'M017', 'L012', 'B096', '2021-02-07', '2021-03-07', '2021-02-13', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR245', 'M030', 'L013', 'B096', '2021-02-26', '2021-04-26', '2021-03-03', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR246', 'M005', 'L014', 'B096', '2021-05-04', '2021-06-04', '2021-05-29', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR247', 'M016', 'L015', 'B096', '2021-07-12', '2021-09-12', '2021-09-14', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR248', 'M028', 'L016', 'B096', '2021-09-22', '2021-11-22', '2021-09-24', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR249', 'M018', 'L017', 'B096', '2021-12-09', '2022-02-09', '2022-01-01', 'Returned', 'No');
+
+INSERT INTO BorrowingRecord VALUES 
+('BR250', 'M007', 'L018', 'B096', '2022-12-13', '2023-01-13', '2023-01-15', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR251', 'M025', 'L019', 'B096', '2023-04-05', '2023-05-05', '2023-05-12', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR252', 'M004', 'L020', 'B096', '2023-07-18', '2022-09-18', '2022-08-28', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR253', 'M011', 'L021', 'B096', '2023-08-30', '2023-09-30', '2023-09-20', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR254', 'M015', 'L022', 'B097', '2019-05-24', '2019-06-24', '2019-07-01', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR255', 'M023', 'L023', 'B097', '2019-11-27', '2019-12-27', '2019-12-29', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR256', 'M009', 'L024', 'B097', '2022-07-05', '2022-08-05', '2022-08-15', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR257', 'M019', 'L025', 'B097', '2023-02-19', '2023-03-19', '2023-03-24', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR258', 'M012', 'L026', 'B097', '2023-12-03', '2024-02-03', '2024-02-03', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR259', 'M030', 'L027', 'B097', '2024-05-01', '2024-07-01', NULL, 'Borrowed', 'No');
+
+
+
+INSERT INTO BorrowingRecord VALUES 
+('BR260', 'M008', 'L028', 'B098', '2018-02-08', '2018-04-08', '2018-04-18', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR261', 'M017', 'L029', 'B098', '2018-11-18', '2018-12-18', '2018-12-12', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR262', 'M002', 'L001', 'B098', '2018-12-22', '2019-02-22', '2019-02-18', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR263', 'M021', 'L002', 'B098', '2020-04-04', '2020-05-04', '2020-05-17', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR264', 'M003', 'L003', 'B098', '2020-07-16', '2020-08-16', '2020-08-06', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR265', 'M025', 'L004', 'B098', '2020-11-19', '2020-12-19', '2020-12-24', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR266', 'M001', 'L005', 'B098', '2022-03-01', '2022-04-01', '2022-04-01', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR267', 'M006', 'L006', 'B098', '2022-09-06', '2022-11-06', '2023-10-05', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR268', 'M020', 'L007', 'B098', '2022-12-20', '2023-02-20', '2023-02-12', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR269', 'M009', 'L008', 'B098', '2023-10-08', '2023-11-08', '2023-11-15', 'Overdue', 'No');
+
+INSERT INTO BorrowingRecord VALUES 
+('BR270', 'M005', 'L009', 'B099', '2019-06-06', '2019-07-06', '2019-06-09', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR271', 'M018', 'L010', 'B099', '2019-06-11', '2019-08-11', '2019-08-17', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR272', 'M029', 'L012', 'B099', '2019-10-10', '2019-11-10', '2019-11-20', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR273', 'M024', 'L012', 'B099', '2020-01-10', '2020-03-10', '2020-03-25', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR274', 'M030', 'L013', 'B099', '2021-01-10', '2021-03-10', '2021-03-03', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR275', 'M014', 'L014', 'B099', '2021-03-23', '2021-05-23', '2021-05-20', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR276', 'M023', 'L015', 'B099', '2021-05-21', '2021-06-21', '2021-05-28', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR277', 'M008', 'L016', 'B099', '2021-06-01', '2021-08-01', '2021-07-01', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR278', 'M007', 'L017', 'B099', '2021-07-27', '2021-08-27', '2021-08-20', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR279', 'M027', 'L018', 'B099', '2021-10-24', '2021-11-24', '2021-11-29', 'Overdue', 'No');
+
+
+
+INSERT INTO BorrowingRecord VALUES 
+('BR280', 'M001', 'L019', 'B099', '2022-02-03', '2022-03-03', '2022-02-24', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR281', 'M002', 'L020', 'B099', '2022-04-07', '2022-06-07', '2022-06-16', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR282', 'M003', 'L021', 'B099', '2022-07-02', '2022-08-02', '2022-08-09', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR283', 'M004', 'L022', 'B099', '2022-08-11', '2022-10-11', '2022-10-11', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR284', 'M005', 'L023', 'B099', '2022-01-28', '2022-02-28', '2023-02-27', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR285', 'M006', 'L024', 'B099', '2023-04-08', '2023-06-08', '2023-04-21', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR286', 'M007', 'L025', 'B099', '2023-07-24', '2023-08-24', '2023-08-05', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR287', 'M008', 'L026', 'B099', '2023-10-09', '2023-12-09', '2023-12-20', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR288', 'M009', 'L027', 'B099', '2024-02-05', '2024-03-05', '2024-03-08', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR289', 'M010', 'L028', 'B099', '2024-10-15', '2024-12-15', NULL, 'Borrowed', 'No');
+
+INSERT INTO BorrowingRecord VALUES 
+('BR290', 'M011', 'L029', 'B100', '2020-02-17', '2020-03-17', '2020-02-28', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR291', 'M012', 'L030', 'B100', '2020-05-09', '2020-07-09', '2020-06-09', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR292', 'M013', 'L001', 'B100', '2020-06-21', '2020-07-21', '2020-08-10', 'Overdue', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR293', 'M015', 'L003', 'B100', '2022-02-02', '2022-03-02', '2023-03-02', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR294', 'M016', 'L004', 'B100', '2022-04-26', '2022-06-26', '2022-06-25', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR295', 'M014', 'L002', 'B100', '2022-11-23', '2023-01-23', '2023-01-27', 'Overdue', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR296', 'M017', 'L005', 'B100', '2023-01-27', '2023-02-27', '2023-02-28', 'Returned', 'Yes');
+INSERT INTO BorrowingRecord VALUES 
+('BR297', 'M018', 'L006', 'B100', '2023-03-10', '2023-05-10', '2023-04-04', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR298', 'M019', 'L007', 'B100', '2023-12-05', '2024-01-05', '2024-01-02', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR299', 'M020', 'L008', 'B100', '2024-02-01', '2024-04-01', '2024-02-05', 'Returned', 'No');
+INSERT INTO BorrowingRecord VALUES 
+('BR300', 'M019', 'L007', 'B100', '2024-10-28', '2024-11-28', NULL, 'Borrowed', 'Yes');
+
+
+
+INSERT INTO MaintenanceRequest VALUES  
+('MR001', 'T001', 'R003', 'L001',  '2023-01-02',  'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR002', 'T003', 'R005', 'L002', '2023-01-03', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR003', 'T007', 'R008', 'L003', '2023-01-03', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR004', 'T009', 'R015', 'L004', '2023-01-04', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR005', 'T013', 'R019', 'L005', '2023-01-06', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES
+('MR006', 'T002', 'R002', 'L006', '2023-01-07', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR007', 'T004', 'R004', 'L007', '2023-01-07', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR008', 'T016', 'R009', 'L008', '2023-01-08', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR009', 'T020', 'R014', 'L009', '2023-01-09', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR010', 'T030', 'R030', 'L010', '2023-01-10', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR011', 'T005', 'R021', 'L011', '2023-01-10', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR012', 'T011', 'R013', 'L012', '2023-01-11', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR013', 'T017', 'R025', 'L013', '2023-01-12', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR014', 'T019', 'R027', 'L014', '2023-01-13', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR015', 'T021', 'R023', 'L015', '2023-01-14', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR016', 'T006', 'R001', 'L016', '2023-01-15', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR017', 'T008', 'R006', 'L017', '2023-01-16', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR018', 'T012', 'R020', 'L018', '2023-01-17', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR019', 'T014', 'R022', 'L019', '2023-01-18', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR020', 'T026', 'R024', 'L020', '2023-01-19', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR021', 'T001', 'R013', 'L001', '2023-01-20', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR022', 'T002', 'R004', 'L002', '2023-01-20', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR023', 'T003', 'R005', 'L003', '2023-01-21', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR024', 'T004', 'R002', 'L004', '2023-01-21', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR025', 'T005', 'R008', 'L005', '2023-01-22', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR026', 'T006', 'R006', 'L006', '2023-01-23', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR027', 'T007', 'R017', 'L007', '2023-01-24', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR028', 'T008', 'R009', 'L008', '2023-01-24', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR029', 'T009', 'R015', 'L009', '2023-01-25', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR030', 'T010', 'R011', 'L010', '2023-01-26', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR031', 'T011', 'R025', 'L011', '2023-01-27', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR032', 'T012', 'R014', 'L012', '2023-01-27', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR033', 'T013', 'R029', 'L013', '2023-01-28', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR034', 'T014', 'R016', 'L014', '2023-01-28', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR035', 'T015', 'R023', 'L015', '2023-01-29', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR036', 'T016', 'R020', 'L016', '2023-01-30', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR037', 'T017', 'R021', 'L017', '2023-01-30', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES
+('MR038', 'T018', 'R026', 'L018', '2023-01-31', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR039', 'T019', 'R027', 'L019', '2023-02-01', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR040', 'T020', 'R028', 'L020', '2023-02-02', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR041', 'T021', 'R019', 'L021', '2023-02-03', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR042', 'T022', 'R022', 'L022', '2023-02-03', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR043', 'T023', 'R007', 'L023', '2023-02-04', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR044', 'T024', 'R018', 'L024', '2023-02-04', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR045', 'T025', 'R012', 'L025', '2023-02-05', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR046', 'T026', 'R030', 'L026', '2023-02-06', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR047', 'T027', 'R027', 'L027', '2023-02-06', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR048', 'T028', 'R004', 'L028', '2023-02-07', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR049', 'T029', 'R010', 'L029', '2023-02-08', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR050', 'T030', 'R006', 'L030', '2023-02-09', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR051', 'T001', 'R007', 'L001', '2023-02-10', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR052', 'T002', 'R022', 'L002', '2023-02-10', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR053', 'T003', 'R023', 'L003', '2023-02-11', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR054', 'T004', 'R028', 'L004', '2023-02-11', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR055', 'T005', 'R015', 'L005', '2023-02-12', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR056', 'T006', 'R016', 'L006', '2023-02-13', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR057', 'T007', 'R019', 'L007', '2023-02-13', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR058', 'T008', 'R002', 'L008', '2023-02-14', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR059', 'T009', 'R021', 'L009', '2023-02-15', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR060', 'T010', 'R028', 'L010', '2023-02-16', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR061', 'T011', 'R023', 'L011', '2023-02-18', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR062', 'T012', 'R011', 'L012', '2023-02-20', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR063', 'T013', 'R010', 'L013', '2023-02-21', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR064', 'T014', 'R020', 'L014', '2023-02-23', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR065', 'T015', 'R003', 'L015', '2023-02-25', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR066', 'T016', 'R030', 'L016', '2023-02-27', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR067', 'T017', 'R019', 'L017', '2023-03-01', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR068', 'T018', 'R028', 'L018', '2023-03-02', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR069', 'T019', 'R010', 'L019', '2023-03-04', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR070', 'T020', 'R004', 'L020', '2023-03-06', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR071', 'T021', 'R023', 'L021', '2023-03-08', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR072', 'T022', 'R002', 'L022', '2023-03-10', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR073', 'T023', 'R007', 'L023', '2023-03-11', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR074', 'T024', 'R006', 'L024', '2023-03-13', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR075', 'T025', 'R027', 'L025', '2023-03-15', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR076', 'T026', 'R022', 'L026', '2023-03-16', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR077', 'T027', 'R010', 'L027', '2023-03-18', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR078', 'T028', 'R001', 'L028', '2023-03-20', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR079', 'T029', 'R021', 'L029', '2023-03-22', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR080', 'T030', 'R009', 'L030', '2023-03-24', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR081', 'T001', 'R023', 'L001', '2023-03-25', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR082', 'T002', 'R004', 'L002', '2023-03-26', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR083', 'T003', 'R008', 'L003', '2023-03-27', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR084', 'T004', 'R006', 'L004', '2023-03-28', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR085', 'T005', 'R019', 'L005', '2023-03-29', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR086', 'T006', 'R030', 'L006', '2023-03-30', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR087', 'T007', 'R010', 'L007', '2023-03-31', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR088', 'T008', 'R011', 'L008', '2023-04-01', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR089', 'T009', 'R007', 'L009', '2023-04-02', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR090', 'T010', 'R018', 'L010', '2023-04-03', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR091', 'T011', 'R029', 'L011', '2023-04-04', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR092', 'T012', 'R016', 'L012', '2023-04-05', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR093', 'T013', 'R005', 'L013', '2023-04-06', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR094', 'T014', 'R018', 'L014', '2023-04-07', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR095', 'T015', 'R021', 'L015', '2023-04-08', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR096', 'T016', 'R020', 'L016', '2023-04-09', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR097', 'T017', 'R025', 'L017', '2023-04-10', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR098', 'T018', 'R028', 'L018', '2023-04-11', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR099', 'T019', 'R017', 'L019', '2023-04-12', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR100', 'T020', 'R001', 'L020', '2023-04-13', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR101', 'T021', 'R013', 'L021', '2023-04-14', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR102', 'T022', 'R011', 'L022', '2023-04-15', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR103', 'T023', 'R027', 'L023', '2023-04-16', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR104', 'T024', 'R026', 'L024', '2023-04-17', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR105', 'T025', 'R008', 'L025', '2023-04-18', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR106', 'T026', 'R024', 'L026', '2023-04-19', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR107', 'T027', 'R019', 'L027', '2023-04-20', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR108', 'T028', 'R004', 'L028', '2023-04-21', 'Completed');
+INSERT INTO MaintenanceRequest VALUES
+('MR109', 'T029', 'R019', 'L029', '2023-04-22', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR110', 'T030', 'R011', 'L030', '2023-04-23', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR111', 'T001', 'R025', 'L001', '2023-04-24', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR112', 'T002', 'R014', 'L002', '2023-04-25', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR113', 'T003', 'R007', 'L003', '2023-04-26', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR114', 'T004', 'R016', 'L004', '2023-04-27', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR115', 'T005', 'R015', 'L005', '2023-04-28', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR116', 'T006', 'R022', 'L006', '2023-04-29', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR117', 'T007', 'R017', 'L007', '2023-04-30', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR118', 'T008', 'R014', 'L008', '2023-05-01', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR119', 'T009', 'R010', 'L009', '2023-05-02', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR120', 'T010', 'R026', 'L010', '2023-05-03', 'Completed');
+
+INSERT INTO MaintenanceRequest VALUES 
+('MR121', 'T011', 'R008', 'L011', '2023-05-04', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR122', 'T012', 'R028', 'L012', '2023-05-05', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR123', 'T013', 'R003', 'L013', '2023-05-06', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR124', 'T014', 'R002', 'L014', '2023-05-07', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR125', 'T015', 'R017', 'L015', '2023-05-08', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR126', 'T016', 'R018', 'L016', '2023-05-09', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR127', 'T017', 'R027', 'L017', '2023-05-10', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR128', 'T018', 'R030', 'L018', '2023-05-11', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR129', 'T019', 'R005', 'L019', '2023-05-12', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR130', 'T020', 'R011', 'L020', '2023-05-13', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR131', 'T021', 'R019', 'L021', '2023-05-15', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR132', 'T022', 'R022', 'L022', '2023-05-15', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR133', 'T023', 'R025', 'L023', '2023-05-16', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR134', 'T024', 'R018', 'L024', '2023-05-18', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR135', 'T025', 'R012', 'L025', '2023-05-18', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR136', 'T026', 'R026', 'L026', '2023-05-19', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR137', 'T027', 'R023', 'L027', '2023-05-20', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR138', 'T028', 'R028', 'L028', '2023-05-20', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR139', 'T029', 'R008', 'L029', '2023-05-21', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR140', 'T030', 'R011', 'L030', '2023-05-23', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR141', 'T001', 'R008', 'L001', '2023-05-24', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR142', 'T002', 'R011', 'L002', '2023-05-24', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR143', 'T003', 'R007', 'L003', '2023-05-25', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR144', 'T004', 'R026', 'L004', '2023-05-26', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR145', 'T005', 'R025', 'L005', '2023-05-26', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR146', 'T006', 'R026', 'L006', '2023-05-27', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR147', 'T007', 'R012', 'L007', '2023-05-29', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR148', 'T008', 'R014', 'L008', '2023-05-29', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR149', 'T009', 'R019', 'L009', '2023-05-30', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR150', 'T010', 'R016', 'L010', '2023-06-01', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR151', 'T011', 'R023', 'L011', '2023-06-02', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR152', 'T012', 'R022', 'L012', '2023-06-02', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR153', 'T013', 'R029', 'L013', '2023-06-03', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR154', 'T014', 'R002', 'L014', '2023-06-04', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR155', 'T015', 'R021', 'L015', '2023-06-06', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR156', 'T016', 'R024', 'L016', '2023-06-07', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR157', 'T017', 'R005', 'L017', '2023-06-07', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR158', 'T018', 'R001', 'L018', '2023-06-08', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR159', 'T019', 'R019', 'L019', '2023-06-09', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR160', 'T020', 'R022', 'L020', '2023-06-10', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR161', 'T021', 'R015', 'L021', '2023-06-11', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR162', 'T022', 'R016', 'L022', '2023-06-12', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR163', 'T023', 'R017', 'L023', '2023-06-12', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR164', 'T024', 'R018', 'L024', '2023-06-13', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR165', 'T025', 'R021', 'L025', '2023-06-14', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR166', 'T026', 'R020', 'L026', '2023-06-15', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR167', 'T027', 'R023', 'L027', '2023-06-16', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR168', 'T028', 'R024', 'L028', '2023-06-16', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR169', 'T029', 'R025', 'L029', '2023-06-17', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR170', 'T030', 'R026', 'L030', '2023-06-18', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR171', 'T001', 'R029', 'L001', '2023-06-19', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR172', 'T002', 'R030', 'L002', '2023-06-20', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR173', 'T003', 'R027', 'L003', '2023-06-21', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR174', 'T004', 'R028', 'L004', '2023-06-21', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR175', 'T005', 'R025', 'L005', '2023-06-22', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR176', 'T006', 'R026', 'L006', '2023-06-23', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR177', 'T007', 'R023', 'L007', '2023-06-24', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR178', 'T008', 'R024', 'L008', '2023-06-24', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR179', 'T009', 'R021', 'L009', '2023-06-25', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR180', 'T010', 'R022', 'L010', '2023-06-26', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR181', 'T011', 'R019', 'L011', '2023-06-27', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR182', 'T012', 'R020', 'L012', '2023-06-28', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR183', 'T013', 'R017', 'L013', '2023-06-29', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR184', 'T014', 'R018', 'L014', '2023-06-29', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR185', 'T015', 'R015', 'L015', '2023-06-30', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR186', 'T016', 'R016', 'L016', '2023-07-01', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR187', 'T017', 'R013', 'L017', '2023-07-01', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR188', 'T018', 'R014', 'L018', '2023-07-02', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR189', 'T019', 'R012', 'L019', '2023-07-03', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR190', 'T020', 'R011', 'L020', '2023-07-04', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR191', 'T021', 'R010', 'L021', '2023-07-05', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR192', 'T022', 'R009', 'L022', '2023-07-06', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR193', 'T023', 'R008', 'L023', '2023-07-06', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR194', 'T024', 'R006', 'L024', '2023-07-07', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR195', 'T025', 'R007', 'L025', '2023-07-08', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR196', 'T026', 'R004', 'L026', '2023-07-09', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR197', 'T027', 'R005', 'L027', '2023-07-09', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR198', 'T028', 'R002', 'L028', '2023-07-10', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR199', 'T029', 'R003', 'L029', '2023-07-11', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR200', 'T030', 'R001', 'L030', '2023-07-12', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR201', 'T001', 'R015', 'L001', '2023-07-13', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR202', 'T002', 'R014', 'L002', '2023-07-14', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR203', 'T003', 'R017', 'L003', '2023-07-14', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR204', 'T004', 'R016', 'L004', '2023-07-15', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR205', 'T005', 'R019', 'L005', '2023-07-16', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR206', 'T006', 'R018', 'L006', '2023-07-17', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR207', 'T007', 'R021', 'L007', '2023-07-17', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR208', 'T008', 'R020', 'L008', '2023-07-18', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR209', 'T009', 'R023', 'L009', '2023-07-19', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR210', 'T010', 'R022', 'L010', '2023-07-20', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR211', 'T011', 'R025', 'L011', '2023-07-22', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR212', 'T012', 'R024', 'L012', '2023-07-24', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR213', 'T013', 'R027', 'L013', '2023-07-25', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR214', 'T014', 'R026', 'L014', '2023-07-27', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR215', 'T015', 'R029', 'L015', '2023-07-27', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR216', 'T016', 'R030', 'L016', '2023-07-28', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR217', 'T017', 'R003', 'L017', '2023-07-30', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR218', 'T018', 'R001', 'L018', '2023-08-01', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR219', 'T019', 'R005', 'L019', '2023-08-03', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR220', 'T020', 'R002', 'L020', '2023-08-05', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR221', 'T021', 'R007', 'L021', '2023-08-06', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR222', 'T022', 'R004', 'L022', '2023-08-08', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR223', 'T023', 'R008', 'L023', '2023-08-09', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR224', 'T024', 'R009', 'L024', '2023-08-11', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR225', 'T025', 'R010', 'L025', '2023-08-13', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR226', 'T026', 'R011', 'L026', '2023-08-14', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR227', 'T027', 'R012', 'L027', '2023-08-14', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR228', 'T028', 'R014', 'L028', '2023-08-16', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR229', 'T029', 'R013', 'L029', '2023-08-18', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR230', 'T030', 'R016', 'L030', '2023-08-20', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR231', 'T001', 'R015', 'L001', '2023-08-21', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR232', 'T002', 'R018', 'L002', '2023-08-22', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR233', 'T003', 'R017', 'L003', '2023-08-24', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR234', 'T004', 'R020', 'L004', '2023-08-26', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR235', 'T005', 'R019', 'L005', '2023-08-27', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR236', 'T006', 'R022', 'L006', '2023-08-29', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR237', 'T007', 'R021', 'L007', '2023-08-30', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR238', 'T008', 'R024', 'L008', '2023-08-31', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR239', 'T009', 'R023', 'L009', '2023-09-01', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR240', 'T010', 'R026', 'L010', '2023-09-02', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR241', 'T011', 'R025', 'L011', '2023-09-03', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR242', 'T012', 'R028', 'L012', '2023-09-04', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR243', 'T013', 'R027', 'L013', '2023-09-06', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR244', 'T014', 'R030', 'L014', '2023-09-08', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR245', 'T015', 'R029', 'L015', '2023-09-08', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR246', 'T016', 'R004', 'L016', '2023-09-09', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR247', 'T017', 'R025', 'L017', '2023-09-10', 'Pending');
+INSERT INTO MaintenanceRequest VALUES
+('MR248', 'T018', 'R028', 'L018', '2023-09-11', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR249', 'T019', 'R010', 'L019', '2023-09-12', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR250', 'T020', 'R030', 'L020', '2023-09-14', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR251', 'T021', 'R012', 'L021', '2023-09-15', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR252', 'T022', 'R022', 'L022', '2023-09-16', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR253', 'T023', 'R027', 'L023', '2023-09-18', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR254', 'T024', 'R018', 'L024', '2023-09-19', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR255', 'T025', 'R015', 'L025', '2023-09-21', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR256', 'T026', 'R026', 'L026', '2023-09-21', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR257', 'T027', 'R029', 'L027', '2023-09-22', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR258', 'T028', 'R004', 'L028', '2023-09-23', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR259', 'T029', 'R019', 'L029', '2023-09-24', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR260', 'T030', 'R011', 'L030', '2023-09-26', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR261', 'T001', 'R005', 'L001', '2023-09-27', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR262', 'T002', 'R014', 'L002', '2023-09-28', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR263', 'T003', 'R023', 'L003', '2023-09-30', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR264', 'T004', 'R002', 'L004', '2023-10-01', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR265', 'T005', 'R015', 'L005', '2023-10-03', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR266', 'T006', 'R020', 'L006', '2023-10-04', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR267', 'T007', 'R017', 'L007', '2023-10-05', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR268', 'T008', 'R001', 'L008', '2023-10-06', 'Pending');
+INSERT INTO MaintenanceRequest VALUES
+('MR269', 'T009', 'R019', 'L009', '2023-10-07', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR270', 'T010', 'R020', 'L010', '2023-10-09', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR271', 'T011', 'R021', 'L011', '2023-10-10', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR272', 'T012', 'R016', 'L012', '2023-10-11', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR273', 'T013', 'R029', 'L013', '2023-10-13', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR274', 'T014’,’R018', 'L014', '2023-10-14', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR275', 'T015', 'R007', 'L015', '2023-10-15', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR276', 'T016', 'R004', 'L016', '2023-10-17', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR277', 'T017', 'R025', 'L017', '2023-10-18', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR278', 'T018', 'R028', 'L018', '2023-10-19', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR279', 'T019', 'R010', 'L019', '2023-10-20', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR280', 'T020', 'R030', 'L020', '2023-10-21', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR281', 'T021', 'R003', 'L021', '2023-10-22', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR282', 'T022', 'R001', 'L022', '2023-10-23', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR283', 'T023', 'R005', 'L023', '2023-10-25', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR284', 'T024', 'R002', 'L024', '2023-10-26', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR285', 'T025', 'R007', 'L025', '2023-10-27', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR286', 'T026', 'R004', 'L026', '2023-10-29', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR287', 'T027', 'R008', 'L027', '2023-10-30', 'Completed');
+INSERT INTO MaintenanceRequest VALUES
+('MR288', 'T028', 'R006', 'L028', '2023-10-30', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR289', 'T029', 'R010', 'L029', '2023-10-31', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR290', 'T030', 'R011', 'L030', '2023-11-01', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR291', 'T001', 'R012', 'L001', '2023-11-02', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR292', 'T002', 'R014', 'L002', '2023-11-03', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR293', 'T003', 'R013', 'L003', '2023-11-04', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR294', 'T004', 'R016', 'L004', '2023-11-06', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR295', 'T005', 'R015', 'L005', '2023-11-07', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR296', 'T006', 'R018', 'L006', '2023-11-08', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR297', 'T007', 'R017', 'L007', '2023-11-10', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR298', 'T008', 'R020', 'L008', '2023-11-10', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR299', 'T009', 'R019', 'L009', '2023-11-11', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR300', 'T010', 'R022', 'L010', '2023-11-12', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR301', 'T011', 'R021', 'L011', '2023-11-13', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR302', 'T012', 'R024', 'L012', '2023-11-14', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR303', 'T013', 'R023', 'L013', '2023-11-15', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR304', 'T014', 'R026', 'L014', '2023-11-17', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR305', 'T015', 'R025', 'L015', '2023-11-18', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR306', 'T016', 'R028', 'L016', '2023-11-19', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR307', 'T017', 'R027', 'L017', '2023-11-21', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR308', 'T018', 'R030', 'L018', '2023-11-22', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR309', 'T019', 'R029', 'L019', '2023-11-23', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR310', 'T020', 'R030', 'L020', '2023-11-24', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR311', 'T021', 'R029', 'L021', '2023-11-25', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR312', 'T022', 'R028', 'L022', '2023-11-26', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR313', 'T023', 'R027', 'L023', '2023-11-28', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR314', 'T024', 'R026', 'L024', '2023-11-29', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR315', 'T025', 'R008', 'L025', '2023-11-30', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR316', 'T026', 'R018', 'L026', '2023-12-01', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR317', 'T027', 'R017', 'L027', '2023-12-02', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR318', 'T028', 'R001', 'L028', '2023-12-02', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR319', 'T029', 'R021', 'L029', '2023-12-03', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR320', 'T030', 'R011', 'L030', '2023-12-04', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR321', 'T001', 'R005', 'L001', '2023-12-05', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR322', 'T002', 'R020', 'L002', '2023-12-06', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR323', 'T003', 'R013', 'L003', '2023-12-07', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR324', 'T004', 'R024', 'L004', '2023-12-08', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR325', 'T005', 'R007', 'L005', '2023-12-09', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR326', 'T006', 'R026', 'L006', '2023-12-10', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR327', 'T007', 'R015', 'L007', '2023-12-12', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR328', 'T008', 'R004', 'L008', '2023-12-13', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR329', 'T009', 'R023', 'L009', '2023-12-14', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR330', 'T010', 'R030', 'L010', '2023-12-15', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR331', 'T011', 'R008', 'L011', '2023-12-16', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR332', 'T012', 'R014', 'L012', '2023-12-17', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR333', 'T013', 'R023', 'L013', '2023-12-18', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR334', 'T014', 'R022', 'L014', '2023-12-19', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR335', 'T015', 'R029', 'L015', '2023-12-20', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR336', 'T016', 'R009', 'L016', '2023-12-22', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR337', 'T017', 'R025', 'L017', '2023-12-23', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR338', 'T018', 'R028', 'L018', '2023-12-24', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR339', 'T019', 'R010', 'L019', '2023-12-25', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR340', 'T020', 'R030', 'L020', '2023-12-26', 'In Progress');
+
+INSERT INTO MaintenanceRequest VALUES 
+('MR341', 'T021', 'R012', 'L021', '2023-12-27', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR342', 'T022', 'R022', 'L022', '2023-12-28', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR343', 'T023', 'R027', 'L023', '2023-12-29', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR344', 'T024', 'R018', 'L024', '2023-12-30', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR345', 'T025', 'R015', 'L025', '2023-12-31', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR346', 'T026', 'R026', 'L026', '2024-01-02', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR347', 'T027', 'R012', 'L027', '2024-01-03', 'Completed');
+INSERT INTO MaintenanceRequest VALUES 
+('MR348', 'T028', 'R004', 'L028', '2024-01-04', 'Pending');
+INSERT INTO MaintenanceRequest VALUES 
+('MR349', 'T029', 'R019', 'L029', '2024-01-05', 'In Progress');
+INSERT INTO MaintenanceRequest VALUES 
+('MR350', 'T030', 'R011', 'L030', '2024-01-06', 'Completed');
+
+
+INSERT INTO Billing VALUES ('BL001', 'M001', 'overdue', 1, '2017-10-06', 'Paid');
+INSERT INTO Billing VALUES ('BL002', 'M023', 'overdue', 11, '2018-04-07', 'Paid');
+INSERT INTO Billing VALUES ('BL003', 'M008', 'overdue', 10, '2018-05-18', 'Overdue');
+INSERT INTO Billing VALUES ('BL004', 'M010', 'overdue', 10, '2018-07-01', 'Paid');
+INSERT INTO Billing VALUES ('BL005', 'M006', 'overdue', 9, '2019-01-10', 'Paid');
+INSERT INTO Billing VALUES ('BL006', 'M017', 'overdue', 3, '2019-04-20', 'Paid');
+INSERT INTO Billing VALUES ('BL007', 'M014', 'overdue', 4, '2019-05-17', 'Overdue');
+INSERT INTO Billing VALUES ('BL008', 'M017', 'overdue', 3, '2019-05-17', 'Paid');
+INSERT INTO Billing VALUES ('BL009', 'M003', 'overdue', 1, '2019-06-20', 'Paid');
+INSERT INTO Billing VALUES ('BL010', 'M025', 'overdue', 10, '2019-06-24', 'Paid');
+INSERT INTO Billing VALUES ('BL011', 'M012', 'overdue', 12, '2019-07-08', 'Paid');
+INSERT INTO Billing VALUES ('BL012', 'M013', 'overdue', 1, '2019-07-23', 'Paid');
+INSERT INTO Billing VALUES ('BL013', 'M025', 'overdue', 9, '2019-09-28', 'Paid');
+INSERT INTO Billing VALUES ('BL014', 'M013', 'overdue', 11, '2019-10-01', 'Paid');
+INSERT INTO Billing VALUES ('BL015', 'M005', 'overdue', 19, '2019-10-30', 'Paid');
+INSERT INTO Billing VALUES ('BL016', 'M018', 'overdue', 7, '2019-11-15', 'Paid');
+INSERT INTO Billing VALUES ('BL017', 'M020', 'overdue', 10, '2019-12-10', 'Overdue');
+INSERT INTO Billing VALUES ('BL018', 'M015', 'overdue', 7, '2020-01-29', 'Paid');
+INSERT INTO Billing VALUES ('BL019', 'M027', 'overdue', 8, '2020-02-18', 'Paid');
+INSERT INTO Billing VALUES ('BL020', 'M001', 'overdue', 15, '2020-04-10', 'Paid');
+INSERT INTO Billing VALUES ('BL021', 'M011', 'overdue', 4, '2020-05-16', 'Paid');
+INSERT INTO Billing VALUES ('BL022', 'M010', 'overdue', 1, '2020-06-01', 'Paid');
+INSERT INTO Billing VALUES ('BL023', 'M023', 'overdue', 9, '2020-06-10', 'Paid');
+INSERT INTO Billing VALUES ('BL024', 'M009', 'overdue', 9, '2020-07-10', 'Paid');
+INSERT INTO Billing VALUES ('BL025', 'M010', 'overdue', 5, '2020-08-28', 'Paid');
+INSERT INTO Billing VALUES ('BL026', 'M013', 'overdue', 19, '2020-09-10', 'Paid');
+INSERT INTO Billing VALUES ('BL027', 'M025', 'overdue', 9, '2020-10-30', 'Paid');
+INSERT INTO Billing VALUES ('BL028', 'M003', 'overdue', 6, '2020-11-15', 'Paid');
+INSERT INTO Billing VALUES ('BL029', 'M016', 'overdue', 11, '2020-12-01', 'Paid');
+INSERT INTO Billing VALUES ('BL030', 'M019', 'overdue', 3, '2020-12-08', 'Paid');
+INSERT INTO Billing VALUES ('BL031', 'M029', 'overdue', 10, '2020-12-10', 'Paid');
+INSERT INTO Billing VALUES ('BL032', 'M030', 'overdue', 1, '2020-12-11', 'Paid');
+INSERT INTO Billing VALUES ('BL033', 'M023', 'overdue', 13, '2020-12-18', 'Paid');
+INSERT INTO Billing VALUES ('BL034', 'M026', 'overdue', 10, '2020-12-30', 'Overdue');
+INSERT INTO Billing VALUES ('BL035', 'M002', 'overdue', 2, '2021-01-12', 'Paid');
+INSERT INTO Billing VALUES ('BL036', 'M025', 'overdue', 2, '2021-01-15', 'Paid');
+INSERT INTO Billing VALUES ('BL037', 'M019', 'overdue', 12, '2021-01-29', 'Paid');
+INSERT INTO Billing VALUES ('BL038', 'M005', 'RegisterMember', 10, '2021-03-30', 'Paid');
+INSERT INTO Billing VALUES ('BL039', 'M010', 'overdue', 5, '2021-04-01', 'Paid');
+INSERT INTO Billing VALUES ('BL040', 'M024', 'overdue', 15, '2021-04-25', 'Paid');
+INSERT INTO Billing VALUES ('BL041', 'M013', 'overdue', 8, '2021-04-26', 'Paid');
+INSERT INTO Billing VALUES ('BL042', 'M020', 'overdue', 11, '2021-05-01', 'Overdue');
+INSERT INTO Billing VALUES ('BL043', 'M026', 'overdue', 8, '2021-05-10', 'Overdue');
+INSERT INTO Billing VALUES ('BL044', 'M021', 'overdue', 9, '2021-06-07', 'Paid');
+INSERT INTO Billing VALUES ('BL045', 'M005', 'overdue', 10, '2021-06-07', 'Paid');
+INSERT INTO Billing VALUES ('BL046', 'M009', 'overdue', 9, '2021-06-11', 'Paid');
+INSERT INTO Billing VALUES ('BL047', 'M025', 'overdue', 7, '2021-06-12', 'Paid');
+INSERT INTO Billing VALUES ('BL048', 'M021', 'overdue', 13, '2021-06-17', 'Paid');
+INSERT INTO Billing VALUES ('BL049', 'M018', 'RegisterMember', 20, '2021-08-12', 'Paid');
+INSERT INTO Billing VALUES ('BL050', 'M023', 'overdue', 9, '2021-09-24', 'Paid');
+INSERT INTO Billing VALUES ('BL051', 'M029', 'RegisterMember', 10, '2021-09-25', 'Paid');
+INSERT INTO Billing VALUES ('BL052', 'M017', 'overdue', 10, '2021-10-12', 'Paid');
+INSERT INTO Billing VALUES ('BL053', 'M016', 'overdue', 2, '2021-10-14', 'Paid');
+INSERT INTO Billing VALUES ('BL054', 'M013', 'overdue', 4, '2021-11-08', 'Paid');
+INSERT INTO Billing VALUES ('BL055', 'M029', 'overdue', 1, '2021-11-20', 'Paid');
+INSERT INTO Billing VALUES ('BL056', 'M027', 'overdue', 7, '2021-12-29', 'Paid');
+INSERT INTO Billing VALUES ('BL057', 'M005', 'RenewMember', 5, '2022-03-30', 'Overdue');
+INSERT INTO Billing VALUES ('BL058', 'M021', 'RegisterMember', 10, '2022-04-05', 'Paid');
+INSERT INTO Billing VALUES ('BL059', 'M020', 'overdue', 10, '2022-04-13', 'Overdue');
+INSERT INTO Billing VALUES ('BL060', 'M008', 'overdue', 13, '2022-04-13', 'Overdue');
+INSERT INTO Billing VALUES ('BL061', 'M005', 'overdue', 1, '2022-04-27', 'Paid');
+INSERT INTO Billing VALUES ('BL062', 'M021', 'overdue', 10, '2022-04-29', 'Paid');
+INSERT INTO Billing VALUES ('BL063', 'M017', 'RegisterMember', 10, '2022-05-05', 'Paid');
+INSERT INTO Billing VALUES ('BL064', 'M024', 'RegisterMember', 20, '2022-06-15', 'Paid');
+INSERT INTO Billing VALUES ('BL065', 'M002', 'overdue', 6, '2022-06-26', 'Paid');
+INSERT INTO Billing VALUES ('BL066', 'M023', 'overdue', 1, '2022-07-14', 'Paid');
+INSERT INTO Billing VALUES ('BL067', 'M002', 'overdue', 9, '2022-07-16', 'Paid');
+INSERT INTO Billing VALUES ('BL068', 'M022', 'overdue', 4, '2022-08-28', 'Paid');
+INSERT INTO Billing VALUES ('BL069', 'M003', 'overdue', 7, '2022-09-09', 'Paid');
+INSERT INTO Billing VALUES ('BL070', 'M009', 'overdue', 10, '2022-09-15', 'Paid');
+INSERT INTO Billing VALUES ('BL071', 'M014', 'RegisterMember', 20, '2022-09-15', 'Paid');
+INSERT INTO Billing VALUES ('BL072', 'M002', 'overdue', 5, '2022-10-29', 'Paid');
+INSERT INTO Billing VALUES ('BL073', 'M006', 'overdue', 8, '2022-11-01', 'Paid');
+INSERT INTO Billing VALUES ('BL074', 'M027', 'RegisterMember', 10, '2022-11-20', 'Paid');
+INSERT INTO Billing VALUES ('BL075', 'M030', 'overdue', 11, '2022-12-12', 'Paid');
+INSERT INTO Billing VALUES ('BL076', 'M008', 'RegisterMember', 20, '2023-01-15', 'Paid');
+INSERT INTO Billing VALUES ('BL077', 'M028', 'RegisterMember', 20, '2023-02-07', 'Paid');
+INSERT INTO Billing VALUES ('BL078', 'M014', 'overdue', 4, '2023-02-27', 'Overdue');
+INSERT INTO Billing VALUES ('BL079', 'M015', 'RegisterMember', 10, '2023-03-10', 'Paid');
+INSERT INTO Billing VALUES ('BL080', 'M010', 'RegisterMember', 20, '2023-04-10', 'Paid');
+INSERT INTO Billing VALUES ('BL081', 'M028', 'overdue', 371, '2023-04-26', 'Paid');
+INSERT INTO Billing VALUES ('BL082', 'M021', 'overdue', 9, '2023-05-02', 'Paid');
+INSERT INTO Billing VALUES ('BL083', 'M002', 'RegisterMember', 20, '2023-05-10', 'Paid');
+INSERT INTO Billing VALUES ('BL084', 'M025', 'overdue', 21, '2023-05-15', 'Paid');
+INSERT INTO Billing VALUES ('BL085', 'M013', 'overdue', 1, '2023-05-20', 'Paid');
+INSERT INTO Billing VALUES ('BL086', 'M004', 'overdue', 11, '2023-05-20', 'Overdue');
+INSERT INTO Billing VALUES ('BL087', 'M025', 'RegisterMember', 10, '2023-06-08', 'Paid');
+INSERT INTO Billing VALUES ('BL088', 'M011', 'RegisterMember', 10, '2023-06-25', 'Paid');
+INSERT INTO Billing VALUES ('BL089', 'M004', 'RegisterMember', 20, '2023-07-15', 'Paid');
+INSERT INTO Billing VALUES ('BL090', 'M026', 'RegisterMember', 20, '2023-07-18', 'Paid');
+INSERT INTO Billing VALUES ('BL091', 'M001', 'overdue', 2, '2023-08-09', 'Paid');
+INSERT INTO Billing VALUES ('BL092', 'M002', 'overdue', 7, '2023-09-12', 'Paid');
+INSERT INTO Billing VALUES ('BL093', 'M024', 'overdue', 10, '2023-09-19', 'Paid');
+INSERT INTO Billing VALUES ('BL094', 'M006', 'RegisterMember', 20, '2023-10-10', 'Paid');
+INSERT INTO Billing VALUES ('BL095', 'M020', 'RegisterMember', 20, '2023-10-22', 'Paid');
+INSERT INTO Billing VALUES ('BL096', 'M016', 'RegisterMember', 20, '2023-11-01', 'Paid');
+INSERT INTO Billing VALUES ('BL097', 'M027', 'overdue', 11, '2023-11-26', 'Paid');
+INSERT INTO Billing VALUES ('BL098', 'M027', 'overdue', 32, '2023-12-03', 'Paid');
+INSERT INTO Billing VALUES ('BL099', 'M009', 'overdue', 7, '2023-12-15', 'Paid');
+INSERT INTO Billing VALUES ('BL100', 'M029', 'overdue', 10, '2023-12-20', 'Paid');
+INSERT INTO Billing VALUES ('BL101', 'M008', 'overdue', 13, '2024-01-20', 'Overdue');
+INSERT INTO Billing VALUES ('BL102', 'M028', 'RenewMember', 10, '2024-02-07', 'Unpaid');
+INSERT INTO Billing VALUES ('BL103', 'M015', 'RenewMember', 5, '2024-03-10', 'Overdue');
+INSERT INTO Billing VALUES ('BL104', 'M010', 'RenewMember', 10, '2024-04-10', 'Overdue');
+INSERT INTO Billing VALUES ('BL105', 'M026', 'overdue', 11, '2024-05-04', 'Overdue');
+INSERT INTO Billing VALUES ('BL106', 'M002', 'RenewMember', 10, '2024-05-10', 'Overdue');
+INSERT INTO Billing VALUES ('BL107', 'M011', 'RenewMember', 5, '2024-06-25', 'Overdue');
+INSERT INTO Billing VALUES ('BL108', 'M013', 'RegisterMember', 10, '2024-07-22', 'Paid');
+INSERT INTO Billing VALUES ('BL109', 'M030', 'RegisterMember', 20, '2024-08-01', 'Paid');
+INSERT INTO Billing VALUES ('BL110', 'M022', 'RegisterMember', 20, '2024-08-12', 'Paid');
+INSERT INTO Billing VALUES ('BL111', 'M003', 'RegisterMember', 10, '2024-08-20', 'Paid');
+INSERT INTO Billing VALUES ('BL112', 'M023', 'RegisterMember', 10, '2024-09-05', 'Paid');
+INSERT INTO Billing VALUES ('BL113', 'M006', 'RenewMember', 10, '2024-10-10', 'Paid');
+INSERT INTO Billing VALUES ('BL114', 'M019', 'RegisterMember', 10, '2024-10-20', 'Paid');
+INSERT INTO Billing VALUES ('BL115', 'M010', 'overdue', 1, '2024-10-25', 'Unpaid');
+INSERT INTO Billing VALUES ('BL116', 'M016', 'RenewMember', 10, '2024-11-01', 'Overdue');
+INSERT INTO Billing VALUES ('BL117', 'M001', 'RegisterMember', 10, '2024-11-01', 'Paid');
+INSERT INTO Billing VALUES ('BL118', 'M009', 'RegisterMember', 10, '2024-11-10', 'Paid');
+INSERT INTO Billing VALUES ('BL119', 'M007', 'RegisterMember', 10, '2024-12-05', 'Paid');
+INSERT INTO Billing VALUES ('BL120', 'M012', 'RegisterMember', 20, '2024-12-15', 'Paid');
+INSERT INTO Billing VALUES ('BL121', 'M013', 'RenewMember', 5, '2025-07-22', 'Unpaid');
+INSERT INTO Billing VALUES ('BL122', 'M030', 'RenewMember', 10, '2025-08-01', 'Paid');
+INSERT INTO Billing VALUES ('BL123', 'M022', 'RenewMember', 10, '2025-08-12', 'Unpaid');
+INSERT INTO Billing VALUES ('BL124', 'M003', 'RenewMember', 5, '2025-08-20', 'Unpaid');
+INSERT INTO Billing VALUES ('BL125', 'M023', 'RenewMember', 5, '2025-09-05', 'Paid');
+INSERT INTO Billing VALUES ('BL126', 'M019', 'RenewMember', 5, '2025-10-20', 'Paid');
+INSERT INTO Billing VALUES ('BL127', 'M001', 'RenewMember', 5, '2025-11-01', 'Paid');
+INSERT INTO Billing VALUES ('BL128', 'M009', 'RenewMember', 5, '2025-11-10', 'Unpaid');
+INSERT INTO Billing VALUES ('BL129', 'M007', 'RenewMember', 5, '2025-12-05', 'Unpaid');
+INSERT INTO Billing VALUES ('BL130', 'M012', 'RenewMember', 10, '2025-12-15', 'Unpaid');
+
+
+INSERT INTO Invoice VALUES ('IV001', '2017-10-01', 'Cash', 'BL001');
+INSERT INTO Invoice VALUES ('IV002', '2018-04-06', 'Online Banking', 'BL002');
+INSERT INTO Invoice VALUES ('IV003', '2018-07-01', 'e-wallet', 'BL004');
+INSERT INTO Invoice VALUES ('IV004', '2019-01-08', 'Cash', 'BL005');
+INSERT INTO Invoice VALUES ('IV005', '2019-04-16', 'Online Banking', 'BL006');
+INSERT INTO Invoice VALUES ('IV006', '2019-05-11', 'Cash', 'BL008');
+INSERT INTO Invoice VALUES ('IV007', '2019-06-15', 'e-wallet', 'BL009');
+INSERT INTO Invoice VALUES ('IV008', '2019-06-24', 'Cash', 'BL010');
+INSERT INTO Invoice VALUES ('IV009', '2019-07-06', 'Online Banking', 'BL011');
+INSERT INTO Invoice VALUES ('IV010', '2019-07-21', 'Cash', 'BL012');
+INSERT INTO Invoice VALUES ('IV011', '2019-09-28', 'e-wallet', 'BL013');
+INSERT INTO Invoice VALUES ('IV012', '2019-10-01', 'Cash', 'BL014');
+INSERT INTO Invoice VALUES ('IV013', '2019-10-29', 'Online Banking', 'BL015');
+INSERT INTO Invoice VALUES ('IV014', '2019-11-12', 'Cash', 'BL016');
+INSERT INTO Invoice VALUES ('IV015', '2020-01-27', 'e-wallet', 'BL018');
+INSERT INTO Invoice VALUES ('IV016', '2020-02-14', 'Online Banking', 'BL019');
+INSERT INTO Invoice VALUES ('IV017', '2020-04-08', 'Cash', 'BL020');
+INSERT INTO Invoice VALUES ('IV018', '2020-05-15', 'Online Banking', 'BL021');
+INSERT INTO Invoice VALUES ('IV019', '2020-06-01', 'e-wallet', 'BL022');
+INSERT INTO Invoice VALUES ('IV020', '2020-06-07', 'Cash', 'BL023');
+INSERT INTO Invoice VALUES ('IV021', '2020-07-10', 'Online Banking', 'BL024');
+INSERT INTO Invoice VALUES ('IV022', '2020-08-23', 'Cash', 'BL025');
+INSERT INTO Invoice VALUES ('IV023', '2020-09-08', 'e-wallet', 'BL026');
+INSERT INTO Invoice VALUES ('IV024', '2020-10-30', 'Cash', 'BL027');
+INSERT INTO Invoice VALUES ('IV025', '2020-11-13', 'Online Banking', 'BL028');
+INSERT INTO Invoice VALUES ('IV026', '2020-12-01', 'e-wallet', 'BL029');
+INSERT INTO Invoice VALUES ('IV027', '2020-12-04', 'Cash', 'BL030');
+INSERT INTO Invoice VALUES ('IV028', '2020-12-10', 'Online Banking', 'BL031');
+INSERT INTO Invoice VALUES ('IV029', '2020-12-11', 'e-wallet', 'BL032');
+INSERT INTO Invoice VALUES ('IV030', '2020-12-15', 'Cash', 'BL033');
+INSERT INTO Invoice VALUES ('IV031', '2021-01-10', 'e-wallet', 'BL035');
+INSERT INTO Invoice VALUES ('IV032', '2021-01-15', 'Online Banking', 'BL036');
+INSERT INTO Invoice VALUES ('IV033', '2021-01-27', 'Cash', 'BL037');
+INSERT INTO Invoice VALUES ('IV034', '2021-03-29', 'e-wallet', 'BL038');
+INSERT INTO Invoice VALUES ('IV035', '2021-04-01', 'Cash', 'BL039');
+INSERT INTO Invoice VALUES ('IV036', '2021-04-25', 'Online Banking', 'BL040');
+INSERT INTO Invoice VALUES ('IV037', '2021-04-25', 'e-wallet', 'BL041');
+INSERT INTO Invoice VALUES ('IV038', '2021-06-06', 'Cash', 'BL044');
+INSERT INTO Invoice VALUES ('IV039', '2021-06-07', 'Online Banking', 'BL045');
+INSERT INTO Invoice VALUES ('IV040', '2021-06-11', 'Cash', 'BL046');
+INSERT INTO Invoice VALUES ('IV041', '2021-06-12', 'e-wallet', 'BL047');
+INSERT INTO Invoice VALUES ('IV042', '2021-06-15', 'Online Banking', 'BL048');
+INSERT INTO Invoice VALUES ('IV043', '2021-08-08', 'Cash', 'BL049');
+INSERT INTO Invoice VALUES ('IV044', '2021-09-22', 'e-wallet', 'BL050');
+INSERT INTO Invoice VALUES ('IV045', '2021-09-24', 'Cash', 'BL051');
+INSERT INTO Invoice VALUES ('IV046', '2021-10-10', 'Online Banking', 'BL052');
+INSERT INTO Invoice VALUES ('IV047', '2021-10-14', 'Cash', 'BL053');
+INSERT INTO Invoice VALUES ('IV048', '2021-11-08', 'e-wallet', 'BL054');
+INSERT INTO Invoice VALUES ('IV049', '2021-11-08', 'Cash', 'BL055');
+INSERT INTO Invoice VALUES ('IV050', '2021-12-29', 'Online Banking', 'BL056');
+INSERT INTO Invoice VALUES ('IV051', '2022-04-01', 'Cash', 'BL058');  
+INSERT INTO Invoice VALUES ('IV052', '2022-04-22', 'Cash', 'BL061');
+INSERT INTO Invoice VALUES ('IV053', '2022-04-29', 'Online Banking', 'BL062');
+INSERT INTO Invoice VALUES ('IV054', '2022-05-02', 'e-wallet', 'BL063');
+INSERT INTO Invoice VALUES ('IV055', '2022-06-04', 'Cash', 'BL064');
+INSERT INTO Invoice VALUES ('IV056', '2022-06-25', 'Online Banking', 'BL065');
+INSERT INTO Invoice VALUES ('IV057', '2022-07-14', 'Cash', 'BL066');
+INSERT INTO Invoice VALUES ('IV058', '2022-07-16', 'e-wallet', 'BL067');
+INSERT INTO Invoice VALUES ('IV059', '2022-08-28', 'Online Banking', 'BL068');
+INSERT INTO Invoice VALUES ('IV060', '2022-09-09', 'Cash', 'BL069');
+INSERT INTO Invoice VALUES ('IV061', '2022-09-10', 'e-wallet', 'BL070');
+INSERT INTO Invoice VALUES ('IV062', '2022-10-21', 'Cash', 'BL072');
+INSERT INTO Invoice VALUES ('IV063', '2022-11-01', 'Online Banking', 'BL073');
+INSERT INTO Invoice VALUES ('IV064', '2022-11-15', 'e-wallet', 'BL074');
+INSERT INTO Invoice VALUES ('IV065', '2022-12-12', 'Cash', 'BL075');
+INSERT INTO Invoice VALUES ('IV066', '2023-01-07', 'e-wallet', 'BL076');
+INSERT INTO Invoice VALUES ('IV067', '2023-02-03', 'Online Banking', 'BL077');
+INSERT INTO Invoice VALUES ('IV068', '2023-03-10', 'Cash', 'BL079');
+INSERT INTO Invoice VALUES ('IV069', '2023-04-10', 'e-wallet', 'BL080');
+INSERT INTO Invoice VALUES ('IV070', '2023-04-21', 'Online Banking', 'BL081');
+INSERT INTO Invoice VALUES ('IV071', '2023-05-01', 'Cash', 'BL082');
+INSERT INTO Invoice VALUES ('IV072', '2022-09-10', 'Cash', 'BL071');
+INSERT INTO Invoice VALUES ('IV073', '2023-05-06', 'e-wallet', 'BL083');
+INSERT INTO Invoice VALUES ('IV074', '2023-05-15', 'Cash', 'BL084');
+INSERT INTO Invoice VALUES ('IV075', '2023-05-20', 'Online Banking', 'BL085');
+INSERT INTO Invoice VALUES ('IV076', '2023-06-06', 'e-wallet', 'BL087');
+INSERT INTO Invoice VALUES ('IV077', '2023-06-25', 'Cash', 'BL088');
+INSERT INTO Invoice VALUES ('IV078', '2023-07-10', 'Online Banking', 'BL089');
+INSERT INTO Invoice VALUES ('IV079', '2023-07-10', 'Cash', 'BL090');
+INSERT INTO Invoice VALUES ('IV080', '2023-08-09', 'e-wallet', 'BL091');
+INSERT INTO Invoice VALUES ('IV081', '2023-09-11', 'Online Banking', 'BL092');
+INSERT INTO Invoice VALUES ('IV082', '2023-09-12', 'Cash', 'BL093');
+INSERT INTO Invoice VALUES ('IV083', '2023-10-03', 'e-wallet', 'BL094');
+INSERT INTO Invoice VALUES ('IV084', '2023-10-21', 'Cash', 'BL095');
+INSERT INTO Invoice VALUES ('IV085', '2023-11-01', 'Online Banking', 'BL096');
+INSERT INTO Invoice VALUES ('IV086', '2023-11-23', 'e-wallet', 'BL097');
+INSERT INTO Invoice VALUES ('IV087', '2023-12-02', 'Cash', 'BL098');
+INSERT INTO Invoice VALUES ('IV088', '2023-12-15', 'Online Banking', 'BL099');
+INSERT INTO Invoice VALUES ('IV089', '2023-12-17', 'e-wallet', 'BL100');
+INSERT INTO Invoice VALUES ('IV090', '2024-07-20', 'Online Banking', 'BL108');
+INSERT INTO Invoice VALUES ('IV091', '2024-07-29', 'e-wallet', 'BL109');
+INSERT INTO Invoice VALUES ('IV092', '2024-08-11', 'Cash', 'BL110');
+INSERT INTO Invoice VALUES ('IV093', '2024-08-20', 'e-wallet', 'BL111');
+INSERT INTO Invoice VALUES ('IV094', '2024-09-04', 'Online Banking', 'BL112');
+INSERT INTO Invoice VALUES ('IV095', '2024-10-10', 'Cash', 'BL113');
+INSERT INTO Invoice VALUES ('IV096', '2024-10-20', 'e-wallet', 'BL114');
+INSERT INTO Invoice VALUES ('IV097', '2024-10-28', 'Online Banking', 'BL117');
+INSERT INTO Invoice VALUES ('IV098', '2024-11-08', 'Cash', 'BL118');
+INSERT INTO Invoice VALUES ('IV099', '2024-12-03', 'e-wallet', 'BL119');
+INSERT INTO Invoice VALUES ('IV100', '2024-12-15', 'Online Banking', 'BL120');
+INSERT INTO Invoice VALUES ('IV101', '2025-08-01', 'Cash', 'BL122');
+INSERT INTO Invoice VALUES ('IV102', '2025-09-01', 'e-wallet', 'BL125');
+INSERT INTO Invoice VALUES ('IV103', '2025-10-13', 'Cash', 'BL126');
+INSERT INTO Invoice VALUES ('IV104', '2025-10-27', 'Online Banking', 'BL127');
+
+
+INSERT INTO BookReservation VALUES ('RE001', 'M020', 'B008', '2017-04-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE002', 'M021', 'B008', '2017-07-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE003', 'M022', 'B008', '2017-12-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE004', 'M001', 'B021', '2017-08-05', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE005', 'M006', 'B001', '2017-10-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE006', 'M023', 'B008', '2018-01-25', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE007', 'M008', 'B098', '2018-02-04', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE008', 'M013', 'B006', '2018-02-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE009', 'M004', 'B055', '2018-02-18', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE010', 'M014', 'B006', '2018-03-13', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE011', 'M009', 'B019', '2018-03-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE012', 'M021', 'B095', '2018-03-24', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE013', 'M010', 'B019', '2018-04-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE014', 'M026', 'B095', '2018-04-16', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE015', 'M026', 'B095', '2018-05-04', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE016', 'M013', 'B010', '2018-05-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE017', 'M024', 'B008', '2018-06-05', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE018', 'M008', 'B077', '2018-06-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE019', 'M013', 'B095', '2018-07-13', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE020', 'M030', 'B016', '2018-08-21', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE021', 'M006', 'B018', '2018-09-25', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE022', 'M030', 'B095', '2018-09-27', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE023', 'M013', 'B001', '2018-10-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE024', 'M030', 'B095', '2018-10-28', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE025', 'M017', 'B098', '2018-11-14', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE026', 'M002', 'B098', '2018-11-18', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE027', 'M002', 'B098', '2018-12-18', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE028', 'M012', 'B001', '2018-12-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE029', 'M010', 'B004', '2019-01-03', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE030', 'M011', 'B019', '2019-02-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE031', 'M010', 'B004', '2019-02-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE032', 'M004', 'B074', '2019-03-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE033', 'M017', 'B063', '2019-03-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE034', 'M012', 'B019', '2019-04-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE035', 'M003', 'B095', '2019-04-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE036', 'M025', 'B001', '2019-04-15', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE037', 'M015', 'B097', '2019-05-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE038', 'M013', 'B019', '2019-05-21', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE039', 'M018', 'B083', '2019-05-28', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE040', 'M018', 'B048', '2019-05-29', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE041', 'M006', 'B056', '2019-06-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE042', 'M005', 'B099', '2019-06-02', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE043', 'M018', 'B099', '2019-06-07', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE044', 'M023', 'B087', '2019-06-12', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE045', 'M013', 'B019', '2019-06-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE046', 'M023', 'B087', '2019-07-11', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE047', 'M008', 'B041', '2019-07-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE048', 'M012', 'B027', '2019-07-19', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE049', 'M025', 'B012', '2019-07-20', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE050', 'M018', 'B030', '2019-08-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE051', 'M007', 'B095', '2019-08-07', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE052', 'M028', 'B070', '2019-08-19', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE053', 'M029', 'B053', '2019-08-19', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE054', 'M020', 'B065', '2019-08-25', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE055', 'M024', 'B087', '2019-08-25', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE056', 'M005', 'B024', '2019-08-25', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE057', 'M030', 'B001', '2019-09-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE058', 'M024', 'B087', '2019-09-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE059', 'M026', 'B013', '2019-09-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE060', 'M029', 'B071', '2019-09-21', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE061', 'M006', 'B024', '2019-09-28', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE062', 'M027', 'B036', '2019-09-29', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE063', 'M019', 'B048', '2019-10-04', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE064', 'M029', 'B099', '2019-10-06', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE065', 'M026', 'B008', '2019-10-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE066', 'M030', 'B001', '2019-04-16', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE067', 'M027', 'B036', '2019-10-19', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE068', 'M019', 'B084', '2019-10-26', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE069', 'M023', 'B097', '2019-11-23', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE070', 'M025', 'B008', '2019-11-30', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE071', 'M012', 'B093', '2019-12-05', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE072', 'M019', 'B084', '2019-12-06', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE073', 'M017', 'B007', '2019-12-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE074', 'M011', 'B100', '2020-01-02', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE075', 'M022', 'B008', '2020-01-03', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE076', 'M024', 'B099', '2020-01-06', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE077', 'M027', 'B014', '2020-02-04', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE078', 'M011', 'B100', '2020-02-13', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE079', 'M022', 'B008', '2020-02-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE080', 'M001', 'B016', '2020-02-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE081', 'M015', 'B046', '2020-02-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE082', 'M009', 'B042', '2020-02-21', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE083', 'M014', 'B019', '2020-02-25', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE084', 'M021', 'B098', '2020-02-28', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE085', 'M010', 'B001', '2020-03-01', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE086', 'M015', 'B019', '2020-03-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE087', 'M023', 'B067', '2020-03-28', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE088', 'M021', 'B098', '2020-04-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE089', 'M009', 'B042', '2020-04-05', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE090', 'M003', 'B038', '2020-04-06', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE091', 'M009', 'B058', '2020-04-28', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE092', 'M024', 'B008', '2020-05-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE093', 'M030', 'B012', '2020-05-01', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE094', 'M010', 'B026', '2020-05-02', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE095', 'M012', 'B100', '2020-05-05', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE096', 'M003', 'B038', '2020-05-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE097', 'M024', 'B034', '2020-05-19', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE098', 'M030', 'B012', '2020-05-28', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE099', 'M030', 'B012', '2020-06-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE100', 'M008', 'B095', '2020-06-09', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE101', 'M017', 'B095', '2020-06-15', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE102', 'M013', 'B100', '2020-06-17', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE103', 'M025', 'B068', '2020-06-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE104', 'M025', 'B088', '2020-06-24', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE105', 'M003', 'B098', '2020-07-12', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE106', 'M017', 'B095', '2020-07-28', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE107', 'M025', 'B008', '2020-08-21', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE108', 'M007', 'B025', '2020-08-25', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE109', 'M003', 'B002', '2020-09-10', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE110', 'M016', 'B046', '2020-09-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE111', 'M016', 'B019', '2020-09-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE112', 'M016', 'B062', '2020-09-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE113', 'M010', 'B059', '2020-09-21', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE114', 'M023', 'B050', '2020-10-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE115', 'M002', 'B073', '2020-10-04', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE116', 'M025', 'B098', '2020-10-05', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE117', 'M011', 'B095', '2020-10-06', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE118', 'M028', 'B090', '2020-10-17', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE119', 'M004', 'B002', '2020-10-21', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE120', 'M005', 'B092', '2020-11-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE121', 'M024', 'B050', '2020-11-14', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE122', 'M025', 'B098', '2020-11-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE123', 'M018', 'B007', '2020-12-02', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE124', 'M021', 'B049', '2020-12-02', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE125', 'M007', 'B003', '2020-12-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE126', 'M024', 'B050', '2020-12-19', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE127', 'M022', 'B086', '2020-12-23', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE128', 'M028', 'B036', '2020-12-28', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE129', 'M021', 'B049', '2020-12-29', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE130', 'M014', 'B028', '2021-01-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE131', 'M013', 'B060', '2021-01-03', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE132', 'M030', 'B099', '2021-01-06', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE133', 'M005', 'B002', '2021-01-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE134', 'M007', 'B018', '2021-01-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE135', 'M012', 'B004', '2021-01-15', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE136', 'M014', 'B081', '2021-01-16', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE137', 'M026', 'B069', '2021-01-27', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE138', 'M017', 'B096', '2021-02-03', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE139', 'M004', 'B095', '2021-02-24', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE140', 'M027', 'B008', '2021-02-05', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE141', 'M013', 'B060', '2021-02-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE142', 'M030', 'B096', '2021-02-22', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE143', 'M012', 'B004', '2021-02-28', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE144', 'M026', 'B089', '2021-03-05', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE145', 'M022', 'B095', '2021-03-07', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE146', 'M017', 'B047', '2021-03-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE147', 'M026', 'B008', '2021-03-11', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE148', 'M014', 'B099', '2021-03-19', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE149', 'M005', 'B055', '2021-04-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE150', 'M022', 'B095', '2021-04-25', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE151', 'M005', 'B096', '2021-05-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE152', 'M023', 'B099', '2021-05-17', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE153', 'M016', 'B009', '2021-05-19', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE154', 'M008', 'B099', '2021-05-28', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE155', 'M002', 'B022', '2021-06-08', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE156', 'M016', 'B096', '2021-07-08', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE157', 'M026', 'B019', '2021-07-13', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE158', 'M007', 'B099', '2021-07-23', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE159', 'M013', 'B080', '2021-07-30', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE160', 'M016', 'B009', '2021-08-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE161', 'M030', 'B095', '2021-08-13', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE162', 'M018', 'B019', '2021-08-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE163', 'M015', 'B081', '2021-08-18', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE164', 'M013', 'B080', '2021-09-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE165', 'M014', 'B095', '2021-09-05', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE166', 'M028', 'B096', '2021-09-18', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE167', 'M029', 'B008', '2021-09-20', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE168', 'M027', 'B099', '2021-10-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE169', 'M007', 'B057', '2021-11-05', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE170', 'M025', 'B095', '2021-11-09', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE171', 'M019', 'B019', '2021-11-13', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE172', 'M019', 'B064', '2021-11-17', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE173', 'M015', 'B100', '2021-11-24', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE174', 'M030', 'B053', '2021-11-25', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE175', 'M019', 'B002', '2021-12-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE176', 'M018', 'B096', '2021-12-05', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE177', 'M007', 'B001', '2021-12-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE178', 'M004', 'B039', '2021-12-29', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE179', 'M008', 'B003', '2022-01-01', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE180', 'M020', 'B019', '2022-01-11', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE181', 'M028', 'B006', '2022-01-21', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE182', 'M005', 'B099', '2022-01-24', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE183', 'M022', 'B012', '2022-01-25', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE184', 'M015', 'B100', '2022-01-28', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE185', 'M001', 'B099', '2022-01-29', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE186', 'M002', 'B016', '2022-02-02', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE187', 'M021', 'B002', '2022-02-20', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE188', 'M005', 'B075', '2022-02-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE189', 'M001', 'B098', '2022-02-27', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE190', 'M015', 'B095', '2022-03-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE191', 'M002', 'B054', '2022-03-12', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE192', 'M011', 'B079', '2022-03-14', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE193', 'M021', 'B019', '2022-03-29', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE194', 'M002', 'B016', '2022-04-02', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE195', 'M022', 'B032', '2022-04-03', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE196', 'M002', 'B099', '2022-04-03', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE197', 'M006', 'B095', '2022-04-19', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE198', 'M008', 'B025', '2022-04-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE199', 'M016', 'B100', '2022-04-22', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE200', 'M022', 'B019', '2022-04-29', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE201', 'M020', 'B031', '2022-05-05', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE202', 'M021', 'B065', '2022-05-08', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE203', 'M023', 'B019', '2022-05-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE204', 'M022', 'B010', '2022-05-25', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE205', 'M022', 'B049', '2022-06-03', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE206', 'M023', 'B012', '2022-06-18', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE207', 'M003', 'B099', '2022-06-28', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE208', 'M009', 'B097', '2022-07-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE209', 'M024', 'B002', '2022-07-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE210', 'M020', 'B008', '2022-07-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE211', 'M020', 'B031', '2022-07-11', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE212', 'M006', 'B095', '2022-07-19', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE213', 'M023', 'B012', '2022-07-21', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE214', 'M011', 'B059', '2022-07-29', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE215', 'M029', 'B091', '2022-08-06', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE216', 'M004', 'B099', '2022-08-07', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE217', 'M009', 'B077', '2022-08-16', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE218', 'M030', 'B091', '2022-08-26', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE219', 'M020', 'B048', '2022-09-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE220', 'M001', 'B037', '2022-09-02', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE221', 'M006', 'B098', '2022-09-02', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE222', 'M018', 'B093', '2022-09-08', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE223', 'M009', 'B077', '2022-09-19', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE224', 'M002', 'B037', '2022-09-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE225', 'M014', 'B045', '2022-10-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE226', 'M024', 'B019', '2022-10-19', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE227', 'M029', 'B036', '2022-11-02', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE228', 'M027', 'B009', '2022-11-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE229', 'M017', 'B029', '2022-11-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE230', 'M023', 'B008', '2022-11-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE231', 'M014', 'B100', '2022-11-19', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE232', 'M029', 'B020', '2022-12-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE233', 'M029', 'B036', '2022-12-05', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE234', 'M007', 'B096', '2022-12-09', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE235', 'M019', 'B008', '2022-12-16', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE236', 'M020', 'B098', '2022-12-16', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE237', 'M025', 'B034', '2022-12-20', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE238', 'M027', 'B069', '2022-12-21', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE239', 'M022', 'B001', '2023-01-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE240', 'M018', 'B008', '2023-01-11', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE241', 'M017', 'B100', '2023-01-23', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE242', 'M004', 'B017', '2023-02-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE243', 'M027', 'B069', '2023-02-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE244', 'M003', 'B022', '2023-02-01', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE245', 'M025', 'B019', '2023-02-02', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE246', 'M023', 'B095', '2023-02-07', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE247', 'M019', 'B097', '2023-02-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE248', 'M013', 'B044', '2023-02-16', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE249', 'M013', 'B028', '2023-02-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE250', 'M021', 'B032', '2023-02-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE251', 'M025', 'B034', '2023-02-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE252', 'M009', 'B094', '2023-02-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE253', 'M001', 'B072', '2023-02-27', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE254', 'M006', 'B099', '2023-02-28', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE255', 'M027', 'B052', '2023-03-05', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE256', 'M018', 'B100', '2023-03-06', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE257', 'M013', 'B044', '2023-03-16', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE258', 'M003', 'B022', '2023-03-19', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE259', 'M022', 'B066', '2023-04-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE260', 'M025', 'B096', '2023-04-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE261', 'M028', 'B052', '2023-04-02', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE262', 'M006', 'B099', '2023-04-04', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE263', 'M015', 'B029', '2023-04-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE264', 'M016', 'B029', '2023-04-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE265', 'M020', 'B085', '2023-04-23', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE266', 'M005', 'B017', '2023-04-27', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE267', 'M025', 'B013', '2023-05-03', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE268', 'M008', 'B018', '2023-05-11', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE269', 'M010', 'B095', '2023-05-19', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE270', 'M028', 'B052', '2023-05-23', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE271', 'M001', 'B020', '2023-06-02', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE272', 'M010', 'B042', '2023-06-02', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE273', 'M024', 'B011', '2023-06-10', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE274', 'M026', 'B019', '2023-06-11', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE275', 'M025', 'B050', '2023-06-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE276', 'M014', 'B061', '2023-06-21', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE277', 'M006', 'B040', '2023-06-28', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE278', 'M016', 'B002', '2023-06-30', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE279', 'M028', 'B014', '2023-07-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE280', 'M012', 'B059', '2023-07-14', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE281', 'M004', 'B096', '2023-07-14', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE282', 'M015', 'B006', '2023-07-16', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE283', 'M007', 'B099', '2023-07-20', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE284', 'M012', 'B008', '2023-08-01', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE285', 'M011', 'B043', '2023-08-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE286', 'M016', 'B002', '2023-08-12', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE287', 'M011', 'B096', '2023-08-26', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE288', 'M019', 'B030', '2023-08-27', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE289', 'M012', 'B008', '2023-09-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE290', 'M027', 'B019', '2023-09-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE291', 'M030', 'B036', '2023-09-25', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE292', 'M027', 'B002', '2023-10-02', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE293', 'M009', 'B098', '2023-10-04', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE294', 'M008', 'B099', '2023-10-05', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE295', 'M019', 'B100', '2023-10-12', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE296', 'M003', 'B054', '2023-10-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE297', 'M007', 'B040', '2023-11-15', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE298', 'M002', 'B095', '2023-11-11', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE299', 'M016', 'B082', '2023-11-21', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE300', 'M012', 'B097', '2023-11-29', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE301', 'M019', 'B100', '2023-12-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE302', 'M010', 'B078', '2023-12-16', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE303', 'M030', 'B097', '2024-01-20', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE304', 'M026', 'B002', '2024-01-24', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE305', 'M020', 'B100', '2024-01-27', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE306', 'M009', 'B099', '2024-02-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE307', 'M007', 'B076', '2024-02-06', 'Ready');
+INSERT INTO BookReservation VALUES ('RE308', 'M030', 'B097', '2024-04-27', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE309', 'M001', 'B053', '2024-06-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE310', 'M028', 'B001', '2024-06-07', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE311', 'M009', 'B025', '2024-07-10', 'Ready');
+INSERT INTO BookReservation VALUES ('RE312', 'M024', 'B067', '2024-07-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE313', 'M011', 'B026', '2024-07-11', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE314', 'M010', 'B008', '2024-07-15', 'Cancelled');
+INSERT INTO BookReservation VALUES ('RE315', 'M012', 'B005', '2024-07-16', 'Placed');
+INSERT INTO BookReservation VALUES ('RE316', 'M012', 'B079', '2024-07-22', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE317', 'M021', 'B010', '2024-08-07', 'Placed');
+INSERT INTO BookReservation VALUES ('RE318', 'M008', 'B057', '2024-08-12', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE319', 'M017', 'B002', '2024-08-18', 'Placed');
+INSERT INTO BookReservation VALUES ('RE320', 'M014', 'B009', '2024-08-23', 'Ready');
+INSERT INTO BookReservation VALUES ('RE321', 'M023', 'B033', '2024-08-25', 'Placed');
+INSERT INTO BookReservation VALUES ('RE322', 'M027', 'B089', '2024-08-29', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE323', 'M004', 'B023', '2024-09-02', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE324', 'M009', 'B003', '2024-09-05', 'Placed');
+INSERT INTO BookReservation VALUES ('RE325', 'M021', 'B085', '2024-09-08', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE326', 'M029', 'B015', '2024-09-23', 'Placed');
+INSERT INTO BookReservation VALUES ('RE327', 'M006', 'B075', '2024-09-27', 'Placed');
+INSERT INTO BookReservation VALUES ('RE328', 'M018', 'B063', '2024-10-01', 'Ready');
+INSERT INTO BookReservation VALUES ('RE329', 'M015', 'B061', '2024-10-01', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE330', 'M026', 'B035', '2024-10-08', 'Placed');
+INSERT INTO BookReservation VALUES ('RE331', 'M001', 'B016', '2024-10-10', 'Ready');
+INSERT INTO BookReservation VALUES ('RE332', 'M028', 'B019', '2024-10-10', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE333', 'M010', 'B099', '2024-10-11', 'Ready');
+INSERT INTO BookReservation VALUES ('RE334', 'M011', 'B004', '2024-10-11', 'Placed');
+INSERT INTO BookReservation VALUES ('RE335', 'M003', 'B073', '2024-10-13', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE336', 'M030', 'B020', '2024-10-19', 'Ready');
+INSERT INTO BookReservation VALUES ('RE337', 'M026', 'B051', '2024-10-19', 'Fulfilled');
+INSERT INTO BookReservation VALUES ('RE338', 'M019', 'B095', '2024-10-23', 'Ready');
+INSERT INTO BookReservation VALUES ('RE339', 'M019', 'B100', '2024-10-24', 'Placed');
+INSERT INTO BookReservation VALUES ('RE340', 'M030', 'B071', '2024-10-24', 'Ready');
+INSERT INTO BookReservation VALUES ('RE341', 'M004', 'B039', '2024-11-08', 'Placed');
+INSERT INTO BookReservation VALUES ('RE342', 'M017', 'B083', '2024-11-21', 'Placed');

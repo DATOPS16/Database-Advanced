@@ -1,0 +1,47 @@
+-- PS
+
+SET LINESIZE 150
+SET VERIFY OFF
+SET PAGESIZE 50
+
+-- Prompt input for year
+ACCEPT Year CHAR PROMPT 'Enter Year (e.g., 2022): '
+
+-- Column formatting
+COL "Month"            FORMAT A20 HEADING 'Month'
+COL "Total Billed"     FORMAT A10 HEADING 'Total Billed'
+COL "Total Paid"       FORMAT A10 HEADING 'Total Paid'
+COL "Total Unpaid"     FORMAT A12 HEADING 'Total Unpaid'
+
+-- Report title
+TTITLE CENTER 'Yearly Billing Report for &Year' RIGHT 'Page: ' FORMAT 999 SQL.PNO SKIP 2
+
+-- Grouping and totals
+BREAK ON "Month"
+COMPUTE SUM LABEL 'Total for Year:' OF "Total Billed" ON REPORT
+COMPUTE SUM LABEL 'Total Paid for Year:' OF "Total Paid" ON REPORT
+COMPUTE SUM LABEL 'Total Unpaid for Year:' OF "Total Unpaid" ON REPORT
+
+-- Main query with TO_CHAR to format with "-" for zero values
+SELECT TO_CHAR(b.DueDate, 'YYYY-MM') AS "Month",
+       CASE 
+           WHEN SUM(b.Amount) = 0 THEN '-' 
+           ELSE TO_CHAR(SUM(b.Amount), '99999.00') 
+       END AS "Total Billed",
+       CASE 
+           WHEN SUM(CASE WHEN i.PaymentDate IS NOT NULL THEN b.Amount ELSE 0 END) = 0 THEN '-' 
+           ELSE TO_CHAR(SUM(CASE WHEN i.PaymentDate IS NOT NULL THEN b.Amount ELSE 0 END), '99999.00') 
+       END AS "Total Paid",
+       CASE 
+           WHEN SUM(CASE WHEN i.PaymentDate IS NULL THEN b.Amount ELSE 0 END) = 0 THEN '     -' 
+           ELSE TO_CHAR(SUM(CASE WHEN i.PaymentDate IS NULL THEN b.Amount ELSE 0 END), '99999.00') 
+       END AS "Total Unpaid"
+FROM Billing b
+LEFT JOIN Invoice i ON b.BillingID = i.BillingID
+WHERE b.DueDate BETWEEN TO_DATE('&Year-01-01', 'YYYY-MM-DD') AND TO_DATE('&Year-12-31', 'YYYY-MM-DD')
+GROUP BY TO_CHAR(b.DueDate, 'YYYY-MM')
+ORDER BY TO_CHAR(b.DueDate, 'YYYY-MM');
+
+-- Cleanup
+CLEAR COLUMNS
+TTITLE OFF

@@ -1,0 +1,3 @@
+/*PS*/
+CREATE INDEX idx_invoice_billingID 
+ON Invoice (BillingID);

@@ -1,0 +1,18 @@
+/*ps*/
+CREATE OR REPLACE TRIGGER trg_PreventDuplicateReserve
+BEFORE INSERT ON BookReservation
+FOR EACH ROW
+DECLARE
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_count 
+    FROM BookReservation
+    WHERE MemberID = :NEW.MemberID
+      AND BookID = :NEW.BookID
+      AND Status IN ('Placed', 'Ready','Fulfilled')
+      AND ReservationDate >= SYSDATE - 14; -- only active reservations within 14 days
+
+    IF v_count > 0 THEN
+        RAISE_APPLICATION_ERROR(-20007, 'You have already reserved this book within the past 14 days.');
+    END IF;
+END;

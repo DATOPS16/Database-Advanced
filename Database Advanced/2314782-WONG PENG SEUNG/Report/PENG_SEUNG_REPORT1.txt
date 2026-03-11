@@ -1,0 +1,45 @@
+/* PS */
+CREATE OR REPLACE PROCEDURE Report_ActMem_BorrowedBooks AS
+  CURSOR member_cur IS  
+    SELECT MemberID, Name FROM Member WHERE Status = 'Active';
+
+  CURSOR books_cur(p_MemberID Member.MemberID%TYPE) IS
+    SELECT br.BookID, bt.Title, br.BorrowDate, br.Status
+    FROM BorrowingRecord br
+    JOIN BookTitle bt ON br.BookID = bt.BookID
+    WHERE br.MemberID = p_MemberID;
+
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('📚================ ACTIVE MEMBER BORROWED BOOKS REPORT ================');
+
+  FOR m IN member_cur LOOP
+    DBMS_OUTPUT.PUT_LINE(CHR(10) || '👤 Member: ' || m.Name || ' (ID: ' || m.MemberID || ')');
+    DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------');
+
+    DECLARE
+      has_books BOOLEAN := FALSE;
+      total_books NUMBER := 0;
+    BEGIN
+      FOR b IN books_cur(m.MemberID) LOOP
+        DBMS_OUTPUT.PUT_LINE('   📖 "' || b.Title || 
+                             '" | Borrowed: ' || TO_CHAR(b.BorrowDate, 'DD-Mon-YYYY') || 
+                             ' | Status: ' || b.Status);
+        has_books := TRUE;
+        total_books := total_books + 1;
+      END LOOP;
+
+      IF NOT has_books THEN
+        DBMS_OUTPUT.PUT_LINE('   ❌ No borrowed books found.');
+      ELSE
+        DBMS_OUTPUT.PUT_LINE('   📊 Total Borrowed Books: ' || total_books);
+      END IF;
+    END;
+  END LOOP;
+
+  DBMS_OUTPUT.PUT_LINE(CHR(10) || '✅============================ END OF REPORT ============================');
+END;
+/
+
+BEGIN
+    Report_ActMem_BorrowedBooks;
+END;

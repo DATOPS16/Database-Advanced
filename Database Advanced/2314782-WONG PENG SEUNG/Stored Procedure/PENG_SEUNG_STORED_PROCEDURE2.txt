@@ -1,0 +1,44 @@
+/**ps*/
+CREATE OR REPLACE PROCEDURE CreateMaintenanceRequest (
+    p_TechnicianID       VARCHAR2,
+    p_LibraryResourceID  VARCHAR2,
+    p_LibrarianID        VARCHAR2,
+    p_RequestDate        DATE
+) AS
+    v_TechnicianSpecialty  VARCHAR2(50);
+    v_ResourceType         VARCHAR2(50);
+    v_RequestID            VARCHAR2(10);
+BEGIN
+    -- Get Technician's specialty
+    SELECT Specialty INTO v_TechnicianSpecialty
+    FROM Technician
+    WHERE TechnicianID = p_TechnicianID;
+
+    -- Get Library Resource's type
+    SELECT ResourceType INTO v_ResourceType
+    FROM LibraryResource
+    WHERE ResourceID = p_LibraryResourceID;
+
+    -- Generate RequestID using sequence
+    v_RequestID := 'MR' || LPAD(seq_MaintenanceRequestID.NEXTVAL, 3, '0');
+
+    -- Check if specialty matches resource type (using LIKE for flexibility)
+    IF v_TechnicianSpecialty LIKE '%' || v_ResourceType || '%' THEN
+        -- Insert maintenance request
+        INSERT INTO MaintenanceRequest (
+            RequestID, TechnicianID, ResourceID, LibrarianID, RequestDate, Status
+        ) VALUES (
+            v_RequestID, p_TechnicianID, p_LibraryResourceID, p_LibrarianID, p_RequestDate, 'Pending'
+        );
+
+        -- Update library resource status
+        UPDATE LibraryResource
+        SET LibraryResourceStatus = 'Under Maintenance'
+        WHERE ResourceID = p_LibraryResourceID;
+
+        DBMS_OUTPUT.PUT_LINE('Maintenance request created with ID: ' || v_RequestID);
+    ELSE
+        -- Raise error if mismatch
+        RAISE_APPLICATION_ERROR(-20001, 'Technician is not qualified for this resource type.');
+    END IF;
+END;

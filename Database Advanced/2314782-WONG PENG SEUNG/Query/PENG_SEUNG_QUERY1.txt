@@ -1,0 +1,40 @@
+-- PS_QUERY1
+
+SET LINESIZE 150
+SET VERIFY OFF
+SET PAGESIZE 50
+
+-- Prompt inputs
+ACCEPT Start_Date DATE FORMAT 'YYYY-MM-DD' PROMPT 'Enter Start Date (YYYY-MM-DD): '
+ACCEPT End_Date   DATE FORMAT 'YYYY-MM-DD' PROMPT 'Enter End Date (YYYY-MM-DD): '
+ACCEPT Pay_Status CHAR PROMPT 'Enter Payment Status [Paid/Unpaid]: '
+
+-- Column formatting
+COL "Invoice ID"        FORMAT A21 HEADING 'Invoice ID'
+COL "Billing Category"  FORMAT A20 HEADING 'Billing Category'
+COL "Payment Date"      FORMAT A15 HEADING 'Payment Date'
+COL "Payment Method"    FORMAT A20 HEADING 'Payment Method'
+COL "Billing Amount"    FORMAT 99999.99 HEADING 'Billing Amount'
+
+-- Report title
+TTITLE CENTER 'Payment Details between &Start_Date and &End_Date' RIGHT 'Page: ' FORMAT 999 SQL.PNO SKIP 2
+
+-- Grouping and totals
+BREAK ON REPORT
+COMPUTE SUM LABEL 'Total Billing Amount:' OF "Billing Amount" ON REPORT
+
+-- Main query
+SELECT i.InvoiceID       AS "Invoice ID",
+       b.Type            AS "Billing Category",
+       TO_CHAR(i.PaymentDate, 'YYYY-MM-DD') AS "Payment Date",
+       i.PaymentMethod   AS "Payment Method",
+       b.Amount          AS "Billing Amount"
+FROM Invoice i
+JOIN Billing b ON i.BillingID = b.BillingID
+WHERE b.PayStatus = '&Pay_Status'
+  AND i.PaymentDate BETWEEN TO_DATE('&Start_Date', 'YYYY-MM-DD') AND TO_DATE('&End_Date', 'YYYY-MM-DD')
+ORDER BY i.PaymentDate;
+
+-- Cleanup
+CLEAR COLUMNS
+TTITLE OFF

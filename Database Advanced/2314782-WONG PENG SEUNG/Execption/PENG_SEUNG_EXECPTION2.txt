@@ -1,0 +1,1 @@
+RAISE_APPLICATION_ERROR(-20007, 'You have already reserved this book within the past 14 days.');

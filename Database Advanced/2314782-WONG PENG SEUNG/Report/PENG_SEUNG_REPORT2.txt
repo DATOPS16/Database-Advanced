@@ -1,0 +1,61 @@
+/* PS */
+CREATE OR REPLACE PROCEDURE Report_Billing_ByMember(
+    p_MemberID IN Member.MemberID%TYPE
+) AS
+    v_MemberName  Member.Name%TYPE;
+    v_TotalAmount NUMBER := 0;  
+
+    CURSOR bill_cur IS
+      SELECT BillingID, Type, Amount, PayStatus
+      FROM Billing
+      WHERE MemberID = p_MemberID;
+
+    CURSOR invoice_cur(p_BillingID Billing.BillingID%TYPE) IS
+      SELECT InvoiceID, PaymentDate, PaymentMethod
+      FROM Invoice
+      WHERE BillingID = p_BillingID;
+
+BEGIN
+    -- Fetch the member's name for the title
+    SELECT Name
+    INTO   v_MemberName
+    FROM   Member
+    WHERE  MemberID = p_MemberID;
+
+    -- Print header
+    DBMS_OUTPUT.PUT_LINE('📄 Billing Report for Member: ' 
+                         || p_MemberID || ' – ' || v_MemberName);
+    DBMS_OUTPUT.PUT_LINE('=================================================');
+
+    -- Loop through billing records
+    FOR b IN bill_cur LOOP
+        DBMS_OUTPUT.PUT_LINE('💳 Billing ID : ' || b.BillingID);
+        DBMS_OUTPUT.PUT_LINE('    Type      : ' || b.Type);
+        DBMS_OUTPUT.PUT_LINE('    Amount    : RM ' || TO_CHAR(b.Amount, 'FM999,999,990.00'));
+        DBMS_OUTPUT.PUT_LINE('    Status    : ' || b.PayStatus);
+
+        -- Add the amount to the total
+        v_TotalAmount := v_TotalAmount + b.Amount;
+
+        -- Nested cursor for invoices
+        FOR i IN invoice_cur(b.BillingID) LOOP
+            DBMS_OUTPUT.PUT_LINE('    └─ Invoice ID : ' || i.InvoiceID);
+            DBMS_OUTPUT.PUT_LINE('       Date       : ' || TO_CHAR(i.PaymentDate, 'YYYY-MM-DD'));
+            DBMS_OUTPUT.PUT_LINE('       Method     : ' || i.PaymentMethod);
+        END LOOP;
+
+        DBMS_OUTPUT.PUT_LINE('-------------------------------------------------');
+    END LOOP;
+
+    -- Print the total amount at the end
+    DBMS_OUTPUT.PUT_LINE('=================================================');
+    DBMS_OUTPUT.PUT_LINE('Total Amount Due: RM ' || TO_CHAR(v_TotalAmount, 'FM999,999,990.00'));
+
+    -- Footer
+    DBMS_OUTPUT.PUT_LINE(CHR(10) || '========================= END OF REPORT =========================');
+END;
+/
+
+BEGIN
+    Report_Billing_ByMember('M001');
+END;

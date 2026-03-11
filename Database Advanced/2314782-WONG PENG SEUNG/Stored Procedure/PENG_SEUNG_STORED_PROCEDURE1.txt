@@ -1,0 +1,33 @@
+/**ps*/
+CREATE OR REPLACE PROCEDURE RegisterMember (
+    p_MemberID VARCHAR2,
+    p_Name VARCHAR2,
+    p_MemberIC VARCHAR2,
+    p_MemberType VARCHAR2,
+    p_PhoneNumber VARCHAR2,
+    p_Address VARCHAR2
+) AS
+    v_RegisterFee NUMBER;
+    v_BillingID VARCHAR2(10);
+BEGIN
+    -- Determine the registration fee based on membership type
+    IF p_MemberType = 'Standard' THEN
+        v_RegisterFee := 10;
+    ELSIF p_MemberType = 'Premium' THEN
+        v_RegisterFee := 20;
+    END IF;
+
+    -- Insert the new member record
+    INSERT INTO Member VALUES (
+        p_MemberID, p_Name, p_MemberIC, p_MemberType, p_PhoneNumber, p_Address,
+        SYSDATE, ADD_MONTHS(SYSDATE, 12), 'Active', NULL
+    );
+
+    -- Generate Billing ID using sequence
+    SELECT 'BL' || TO_CHAR(BillingSeq.NEXTVAL, 'FM000') INTO v_BillingID FROM dual;
+
+    -- Insert billing information
+    INSERT INTO Billing VALUES (
+        v_BillingID, p_MemberID, 'RegisterMember', v_RegisterFee, SYSDATE, 'Unpaid'
+    );
+END;

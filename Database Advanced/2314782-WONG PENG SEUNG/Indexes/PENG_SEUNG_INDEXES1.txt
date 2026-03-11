@@ -1,0 +1,3 @@
+/*PS*/
+CREATE INDEX idx_billing_ID_payStatus 
+ON Billing (MemberID, PayStatus);

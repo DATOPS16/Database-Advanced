@@ -1,0 +1,5 @@
+/**ps------------------------------------------------------------------------------------------------*/
+CREATE SEQUENCE seq_MaintenanceRequestID
+START WITH 351
+INCREMENT BY 1
+NOCACHE;

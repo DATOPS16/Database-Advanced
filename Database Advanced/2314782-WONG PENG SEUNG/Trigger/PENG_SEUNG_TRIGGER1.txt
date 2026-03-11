@@ -1,0 +1,12 @@
+/*ps*/
+CREATE OR REPLACE TRIGGER trg_PreventInactiveBorrow
+BEFORE INSERT ON BorrowingRecord
+FOR EACH ROW
+DECLARE
+    v_status VARCHAR2(10);
+BEGIN
+    SELECT Status INTO v_status FROM Member WHERE MemberID = :NEW.MemberID;
+    IF v_status != 'Active' THEN
+        RAISE_APPLICATION_ERROR(-20005, 'Inactive members cannot borrow books.');
+    END IF;
+END;
